@@ -13,21 +13,23 @@ func less(i, j int) bool {
 }
 
 func qsort(n int, less func(i, j int) bool, swap func(i, j int)) {
-	sorting(0, n, n/2, less, swap)
+	sorting(0, n, less, swap)
 }
 
-func sorting(l, r, k int, less func(i, j int) bool, swap func(i, j int)) {
+func sorting(l, r int, less func(i, j int) bool, swap func(i, j int)) {
 	if r-l <= 1 {
 		return
 	}
-	var x = arr[(l+r)/2]
+
 	var i = l
 	var j = r - 1
+	//var x = arr[(l+r)/2]
+
 	for i <= j {
-		for arr[i] < x {
+		for less(i, (l+r)/2) { // arr[i] < x
 			i++
 		}
-		for arr[j] > x {
+		for less((l+r)/2, j) { //arr[j] > x
 			j--
 		}
 		if i <= j {
@@ -36,10 +38,11 @@ func sorting(l, r, k int, less func(i, j int) bool, swap func(i, j int)) {
 			j--
 		}
 	}
-	if j >= k {
-		sorting(l, j+1, k, less, swap)
-	} else {
-		sorting(j+1, r, k, less, swap)
+	if j > l {
+		sorting(l, j+1, less, swap)
+	}
+	if i < r {
+		sorting(j+1, r, less, swap)
 	}
 }
 
