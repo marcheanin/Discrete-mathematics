@@ -80,7 +80,7 @@ func fabs(a Fraction) Fraction {
 }
 
 func gaus(a [][]Fraction, b []Fraction, n int) []Fraction {
-	fmt.Println(b)
+	//fmt.Println(b)
 	x := make([]Fraction, n, n)
 	k := 0
 	var index int
@@ -94,7 +94,6 @@ func gaus(a [][]Fraction, b []Fraction, n int) []Fraction {
 			}
 		}
 		if mux.a == 0 {
-			fmt.Println("ik")
 			return x
 		}
 		for i := 0; i < n; i++ {
@@ -120,7 +119,7 @@ func gaus(a [][]Fraction, b []Fraction, n int) []Fraction {
 		}
 		k++
 	}
-	fmt.Println(b)
+	//fmt.Println(b)
 	for k := n - 1; k >= 0; k-- {
 		x[k] = b[k]
 		for i := 0; i < k; i++ {
