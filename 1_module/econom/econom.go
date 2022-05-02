@@ -8,7 +8,7 @@ import (
 )
 
 func isOp(s byte) bool {
-	return s == '-' || s == '+' || s == '*'
+	return s == '#' || s == '$' || s == '@'
 }
 
 func Error(s string) {
@@ -22,6 +22,8 @@ func Reverse(str string) string {
 	}
 	return ""
 }
+
+var Ans = map[string]bool{}
 
 func findEnd(s string, pos int) int {
 	var (
@@ -46,11 +48,14 @@ func findEnd(s string, pos int) int {
 func tokenize(s string) []string {
 	pos := 1
 	tokens := make([]string, 0, 0)
+	if len(s) == 1 {
+		return tokens
+	}
 	for s[pos] != ')' && pos < len(s) {
 		if s[pos] == ' ' {
 			pos++
 		}
-		if isOp(s[pos]) || unicode.IsDigit(rune(s[pos])) {
+		if isOp(s[pos]) || unicode.IsLetter(rune(s[pos])) {
 			tokens = append(tokens, s[pos:pos+1])
 			pos++
 		} else {
@@ -82,8 +87,9 @@ func calculate(tokens []string) int {
 	for i := range tokens {
 		if len(tokens[i]) > 1 {
 			t := parse(tokens[i])
+			Ans[tokens[i]] = true
 			s = append(s, t)
-		} else if unicode.IsDigit(rune(tokens[i][0])) {
+		} else if unicode.IsLetter(rune(tokens[i][0])) {
 			s = append(s, int(tokens[i][0]-'0'))
 		} else {
 			if len(s) != 2 {
@@ -93,13 +99,13 @@ func calculate(tokens []string) int {
 			s = s[:len(s)-1]
 			operand2 := s[len(s)-1]
 			s = s[:len(s)-1]
-			if tokens[i][0] == '+' {
+			if tokens[i][0] == '#' {
 				s = append(s, operand1+operand2)
 			}
-			if tokens[i][0] == '-' {
+			if tokens[i][0] == '$' {
 				s = append(s, operand1-operand2)
 			}
-			if tokens[i][0] == '*' {
+			if tokens[i][0] == '@' {
 				s = append(s, operand1*operand2)
 			}
 		}
@@ -112,7 +118,10 @@ func calculate(tokens []string) int {
 
 func parse(s string) int {
 	tokens := tokenize(s)
-	return calculate(tokens)
+	if len(tokens) != 0 {
+		return calculate(tokens)
+	}
+	return 0
 }
 
 func main() {
@@ -120,5 +129,9 @@ func main() {
 	s, _ = bufio.NewReader(os.Stdin).ReadString('\n')
 	s = s[:len(s)-2]
 	s = to_reverse_polish(s)
-	fmt.Println(parse(s))
+	if len(s) != 1 {
+		Ans[s] = true
+	}
+	parse(s)
+	fmt.Println(len(Ans))
 }
