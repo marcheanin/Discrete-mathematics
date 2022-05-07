@@ -60,6 +60,7 @@ func tokenize(s string) []string {
 			pos = pos2
 		}
 	}
+	//fmt.Println(tokens)
 	return tokens
 }
 

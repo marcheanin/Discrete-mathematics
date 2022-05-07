@@ -1,6 +1,8 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+)
 
 func add(a, b []int32, p int) []int32 {
 	var x int32 = 0
@@ -36,7 +38,7 @@ func add(a, b []int32, p int) []int32 {
 }
 
 func main() {
-	a := []int32{23, 20, 21}
-	b := []int32{15, 25}
-	fmt.Print(add(a, b, 32))
+	a := []int32{1}
+	b := []int32{9, 9, 9}
+	fmt.Print(add(a, b, 10))
 }
