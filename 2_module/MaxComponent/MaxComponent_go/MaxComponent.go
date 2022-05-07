@@ -81,10 +81,12 @@ func main() {
 		}
 	})
 	ans := s[0]
+	fmt.Println("graph {")
 	for key, _ := range ans.v {
-		fmt.Println(key)
+		fmt.Printf("\t%d [color=red]\n", key)
 	}
 	for i := range ans.e {
-		fmt.Printf("%d--%d\n", ans.e[i].first, ans.e[i].second)
+		fmt.Printf("\t%d--%d [color=red]\n", ans.e[i].first, ans.e[i].second)
 	}
+	fmt.Println("}")
 }

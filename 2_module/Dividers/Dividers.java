@@ -41,11 +41,13 @@ public class Dividers {
                 }
             }
         }
+        System.out.println("graph {");
         for (int i = 0; i < size; i++){
-            System.out.println(s[i]);
+            System.out.printf("\t%d\n", s[i]);
         }
         for (int i = 0; i < ans.size(); i++){
-            System.out.println(ans.get(i).i + "--" + ans.get(i).j);
+            System.out.println("\t" + ans.get(i).i + "--" + ans.get(i).j);
         }
+        System.out.println("}");
     }
 }
