@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/../Kruskal_go/.idea/Kruskal(Go).iml" filepath="$PROJECT_DIR$/../Kruskal_go/.idea/Kruskal(Go).iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/Prim_go.iml" filepath="$PROJECT_DIR$/.idea/Prim_go.iml" />
     </modules>
   </component>
 </project>
