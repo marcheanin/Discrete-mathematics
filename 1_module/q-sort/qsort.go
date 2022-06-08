@@ -2,7 +2,12 @@ package main
 
 import "fmt"
 
-var arr []int
+var arr = []int{
+	-385, -303, -259, -268, -330, -347, -376, -253, -259, -376,
+	-352, -243, -284, -356, -322, -273, -356, -287, -303, -307,
+	-348, -389, -235, -298, -406, -275, -408, -315, -368, -397,
+	-341, -364, -398, -275, -334, -290, -376, -269,
+}
 
 func swap(i, j int) {
 	arr[i], arr[j] = arr[j], arr[i]
@@ -17,12 +22,8 @@ func qsort(n int, less func(i, j int) bool, swap func(i, j int)) {
 }
 
 func sorting(l, r int, less func(i, j int) bool, swap func(i, j int)) {
-	if r-l <= 1 {
-		return
-	}
-
 	var i = l
-	var j = r - 1
+	var j = r
 	//var x = arr[(l+r)/2]
 
 	for i <= j {
@@ -39,20 +40,14 @@ func sorting(l, r int, less func(i, j int) bool, swap func(i, j int)) {
 		}
 	}
 	if j > l {
-		sorting(l, j+1, less, swap)
+		sorting(l, j, less, swap)
 	}
 	if i < r {
-		sorting(j+1, r, less, swap)
+		sorting(i, r, less, swap)
 	}
 }
 
 func main() {
-	var n int
-	fmt.Scan(&n)
-	arr = make([]int, n)
-	for i := 0; i < n; i++ {
-		fmt.Scan(&arr[i])
-	}
-	qsort(n, less, swap)
+	qsort(len(arr), less, swap)
 	fmt.Println(arr)
 }

@@ -5,6 +5,12 @@ import (
 )
 
 func add(a, b []int32, p int) []int32 {
+	for i, j := 0, len(a)-1; i < j; i, j = i+1, j-1 {
+		a[i], a[j] = a[j], a[i]
+	}
+	for i, j := 0, len(b)-1; i < j; i, j = i+1, j-1 {
+		b[i], b[j] = b[j], b[i]
+	}
 	var x int32 = 0
 	if len(a) != len(b) {
 		if len(a) < len(b) {
@@ -32,13 +38,16 @@ func add(a, b []int32, p int) []int32 {
 		for j := 0; j < len(a); j++ {
 			res = append(res, a[j])
 		}
-		return res
+		a = res
+	}
+	for i, j := 0, len(a)-1; i < j; i, j = i+1, j-1 {
+		a[i], a[j] = a[j], a[i]
 	}
 	return a
 }
 
 func main() {
 	a := []int32{1}
-	b := []int32{9, 9, 9}
-	fmt.Print(add(a, b, 10))
+	b := []int32{1}
+	fmt.Print(add(a, b, 2))
 }

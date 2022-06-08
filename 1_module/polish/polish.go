@@ -116,10 +116,20 @@ func parse(s string) int {
 	return calculate(tokens)
 }
 
+func Scan1() string {
+	in := bufio.NewScanner(os.Stdin)
+	in.Scan()
+	if err := in.Err(); err != nil {
+		fmt.Fprintln(os.Stderr, "Ошибка ввода:", err)
+	}
+	return in.Text()
+}
+
 func main() {
 	var s string
-	s, _ = bufio.NewReader(os.Stdin).ReadString('\n')
-	s = s[:len(s)-2]
+	//s, _ = bufio.NewReader(os.Stdin).ReadString('\n')
+	//s = s[:len(s)-2]
+	s = Scan1()
 	s = to_reverse_polish(s)
 	fmt.Println(parse(s))
 }

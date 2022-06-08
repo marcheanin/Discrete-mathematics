@@ -126,8 +126,9 @@ func parse(s string) int {
 
 func main() {
 	var s string
-	s, _ = bufio.NewReader(os.Stdin).ReadString('\n')
-	s = s[:len(s)-2]
+	myscanner := bufio.NewScanner(os.Stdin)
+	myscanner.Scan()
+	s = myscanner.Text()
 	s = to_reverse_polish(s)
 	if len(s) != 1 {
 		Ans[s] = true

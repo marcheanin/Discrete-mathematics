@@ -24,6 +24,10 @@ func (f Fraction) simplify() Fraction {
 	t := gcd(f.a, f.b)
 	f.a /= t
 	f.b /= t
+	if f.b < 0 {
+		f.b *= -1
+		f.a *= -1
+	}
 	return f
 }
 
@@ -147,7 +151,11 @@ func main() {
 		b[i] = Fraction{x, 1}
 	}
 	ans := gaus(a, b, n)
-	for i := 0; i < n; i++ {
-		fmt.Println(ans[i].a, "/", ans[i].b)
+	if ans[0].a == 0 && ans[0].b == 0 {
+		fmt.Println("No solution")
+	} else {
+		for i := 0; i < n; i++ {
+			fmt.Printf("%d/%d\n", ans[i].a, ans[i].b)
+		}
 	}
 }
