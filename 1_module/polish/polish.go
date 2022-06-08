@@ -130,6 +130,10 @@ func main() {
 	//s, _ = bufio.NewReader(os.Stdin).ReadString('\n')
 	//s = s[:len(s)-2]
 	s = Scan1()
-	s = to_reverse_polish(s)
-	fmt.Println(parse(s))
+	if len(s) == 1 {
+		fmt.Println(s)
+	} else {
+		s = to_reverse_polish(s)
+		fmt.Println(parse(s))
+	}
 }

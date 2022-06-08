@@ -17,13 +17,38 @@ func less(i, j int) bool {
 	return arr[i] < arr[j]
 }
 
+//с презентации первого модуля
+
+func partition(l, r int, less func(i, j int) bool, swap func(i, j int)) int {
+	i := l
+	j := l
+	for j < r {
+		if less(j, r) {
+			swap(i, j)
+			i++
+		}
+		j++
+	}
+	swap(i, r)
+	return i
+}
+
+func sortrec(l int, r int, less func(i, j int) bool, swap func(i, j int)) {
+	if l < r {
+		q := partition(l, r, less, swap)
+		sortrec(l, q-1, less, swap)
+		sortrec(q+1, r, less, swap)
+	}
+}
+
 func qsort(n int, less func(i, j int) bool, swap func(i, j int)) {
-	sorting(0, n, less, swap)
+	sortrec(0, n-1, less, swap)
 }
 
 func sorting(l, r int, less func(i, j int) bool, swap func(i, j int)) {
+	//fmt.Println(l, r)
 	var i = l
-	var j = r
+	var j = r - 1
 	//var x = arr[(l+r)/2]
 
 	for i <= j {
