@@ -1,56 +1,18 @@
 package main
 
+//<E>  ::= <T> <E’>.
+//<E’> ::= + <T> <E’> | - <T> <E’> | .
+//<T>  ::= <F> <T’>.
+//<T’> ::= * <F> <T’> | / <F> <T’> | .
+//<F>  ::= <number> | <var> | ( <E> ) | - <F>.
+
 import (
-	"bufio"
 	"fmt"
-	"os"
-	"strconv" // для atoi
+	"input"
+	"strconv"
 )
 
-// Реализую стек для хранения чисел и снятия их с верхушки
-
-type Stack []int
-
-func (s *Stack) isEmpty() bool { // проверка на пустоту стека во избежание ошибок
-	return len(*s) == 0 // если стек пустой, будет "panic"
-}
-
-func (s *Stack) push(x int) { // добавить элемент на верхушку стека
-	*s = append(*s, x) // добавляю новое значение в конец стека
-}
-
-func (s *Stack) pop() int { // снять элемент с верхушки стека
-	if s.isEmpty() {
-		fmt.Println("Panic in pop()")
-		return 0
-	} else {
-		var index int = len(*s) - 1      // берем индекс у самого верхнего элемента
-		var topElement int = (*s)[index] // достаем элемент по индексу выше
-		*s = (*s)[:index]                // не забываем удалять элемент из стека
-		return topElement
-	}
-}
-
-var stack Stack // экземпляр stack'a
-
-// конец реализации stack'a
-
-// необходимые для задачи структуры
 type Tag int
-
-type Lexem struct {
-	Tag
-	Image string
-}
-
-type Variable struct { // для переменных их значений
-	value int
-	title string
-}
-
-// конец описания необходимых структур
-
-//начало ввода global переменных для парсинига
 
 const (
 	ERROR  Tag = 1 << iota // Неправильная лексема
@@ -64,340 +26,239 @@ const (
 	RPAREN                 // Правая круглая скобка
 )
 
-var (
-	lexem       []Lexem
-	lexemLength int
-	lexemIndex  int
-
-	token []string
-
-	variable []Variable
-
-	errorStatus bool
-)
-
-// Конец global переменных для парсинга
-
-// Основные функции парсинга
-
-func NumericValue(curTerm string, x int) (result int) {
-	var (
-		index int
-	)
-
-	for index = x; index < len(curTerm); index++ {
-		if curTerm[index] > 47 && curTerm[index] < 58 { // если цифра - все GOOD, иначе прекращаем
-			continue
-		} else {
-			break
-		}
-	}
-
-	result = index
-	return
+type Lexem struct {
+	Tag
+	Image string
 }
 
-func VarIndex(curTerm string, x int) (result int) {
-	var (
-		index int
-	)
+type Var struct {
+	val  int
+	name string
+}
 
-	for index = x; index < len(curTerm); index++ {
-		if (curTerm[index] > 47 && curTerm[index] < 58) || (curTerm[index] > 64 && curTerm[index] < 91) || (curTerm[index] > 96 && curTerm[index] < 123) { // a-z; A-Z; 0-9
-			continue
-		} else { // если не 0-9, a-z или A-Z
+var lexems []Lexem
+var lexemslen, lindex int
+var tokens []string
+var voc []Var
+var err bool = false
+
+func getNum(expr string, j int) int {
+	var i int
+	for i = j; i < len(expr); i++ {
+		if !(expr[i] >= 48 && expr[i] <= 57) {
 			break
 		}
 	}
+	return i
+}
 
-	result = index
-	return
+func getVar(expr string, j int) int {
+	var i int
+	for i = j; i < len(expr); i++ {
+		if !((expr[i] >= 48 && expr[i] <= 57) || (expr[i] >= 65 && expr[i] <= 90) || (expr[i] >= 97 && expr[i] <= 122)) {
+			break
+		}
+	}
+	return i
 }
 
 func lexer(expr string) {
-	var (
-		lx Lexem
-	)
-
-	for i := 0; i < len(expr); i++ {
-
-		if expr[i] == 32 { // пробел
-
+	var lx Lexem
+	var leng = len(expr)
+	for i := 0; i < leng; i++ {
+		lexemslen++
+		switch expr[i] {
+		case 32:
+			lexemslen--
 			continue
-
-		} else if expr[i] == 40 { // знак "("
-
-			lx.Tag = LPAREN
-			lx.Image = "("
-			lexem = append(lexem, lx)
-
-		} else if expr[i] == 41 { // знак ")"
-
-			lx.Tag = RPAREN
-			lx.Image = ")"
-			lexem = append(lexem, lx)
-
-		} else if expr[i] == 42 { // знак "*"
-
-			lx.Tag = MUL
-			lx.Image = "*"
-			lexem = append(lexem, lx)
-
-		} else if expr[i] == 43 { // знак "+"
-
+		case 43:
 			lx.Tag = PLUS
 			lx.Image = "+"
-			lexem = append(lexem, lx)
-
-		} else if expr[i] == 45 { // знак "-"
-
+			lexems = append(lexems, lx)
+			break
+		case 45:
 			lx.Tag = MINUS
 			lx.Image = "-"
-			lexem = append(lexem, lx)
-
-		} else if expr[i] == 47 { // знак "/"
-
+			lexems = append(lexems, lx)
+			break
+		case 42:
+			lx.Tag = MUL
+			lx.Image = "*"
+			lexems = append(lexems, lx)
+			break
+		case 47:
 			lx.Tag = DIV
 			lx.Image = "/"
-			lexem = append(lexem, lx)
-
-		} else { // значение, имя или ERROR
-
-			if expr[i] > 47 && expr[i] < 58 {
-
-				var (
-					valueIndex int = NumericValue(expr, i)
-				)
-
+			lexems = append(lexems, lx)
+			break
+		case 40:
+			lx.Tag = LPAREN
+			lx.Image = "("
+			lexems = append(lexems, lx)
+			break
+		case 41:
+			lx.Tag = RPAREN
+			lx.Image = ")"
+			lexems = append(lexems, lx)
+			break
+		default:
+			if expr[i] >= 48 && expr[i] <= 57 {
+				j := getNum(expr, i)
 				lx.Tag = NUMBER
-				lx.Image = expr[i:valueIndex]
-
-				lexem = append(lexem, lx)
-
-				i = valueIndex - 1
-
-			} else if (expr[i] > 64 && expr[i] < 91) || (expr[i] > 96 && expr[i] < 123) {
-
-				var (
-					variableIndex int = VarIndex(expr, i)
-				)
-
+				lx.Image = expr[i:j]
+				lexems = append(lexems, lx)
+				i = j - 1
+			} else if (expr[i] >= 65 && expr[i] <= 90) || (expr[i] >= 97 && expr[i] <= 122) {
+				j := getVar(expr, i)
 				lx.Tag = VAR
-				lx.Image = expr[i:variableIndex]
-
-				lexem = append(lexem, lx)
-
-				i = variableIndex - 1
-
+				lx.Image = expr[i:j]
+				lexems = append(lexems, lx)
+				i = j - 1
 			} else {
-
 				lx.Tag = ERROR
-				lexem = append(lexem, lx)
-
-				errorStatus = true
-
+				lexems = append(lexems, lx)
+				err = true
 			}
-
 		}
-
-		lexemLength += 1
 	}
 }
 
-func EParse() {
-	TParse()
-	ECommaParse()
+func parseE() {
+	parseT()
+	parseEE()
 }
 
-func TParse() {
-	FParse()
-	TCommaParse()
-}
-
-func TCommaParse() {
-	if lexemLength > lexemIndex {
-
-		var (
-			lx = lexem[lexemIndex]
-		)
-
-		if lx.Tag&(DIV|MUL) != 0 {
-			lexemIndex += 1
-
-			FParse()
-
-			token = append(token, lx.Image)
-
-			TCommaParse()
-		}
-
-	}
-}
-
-func ECommaParse() {
-	if lexemLength > lexemIndex {
-
-		var (
-			lx = lexem[lexemIndex]
-		)
-
+func parseEE() {
+	if lexemslen > lindex {
+		lx := lexems[lindex]
 		if lx.Tag&(PLUS|MINUS) != 0 {
-			lexemIndex += 1
-
-			TParse()
-
-			token = append(token, lx.Image)
-
-			ECommaParse()
-
-		} else if lx.Tag&(VAR|NUMBER) != 0 {
-
-			errorStatus = true
-
+			lindex++
+			parseT()
+			tokens = append(tokens, lx.Image)
+			parseEE()
+		} else if (lx.Tag & (VAR | NUMBER)) != 0 {
+			err = true
 		}
-
 	}
 }
 
-func FParse() {
-	if lexemLength > lexemIndex {
+func parseT() {
+	parseF()
+	parseTT()
+}
 
-		var (
-			lx = lexem[lexemIndex]
-		)
+func parseTT() {
+	if lexemslen > lindex {
+		lx := lexems[lindex]
+		if lx.Tag&(DIV|MUL) != 0 {
+			lindex++
+			parseF()
+			tokens = append(tokens, lx.Image)
+			parseTT()
+		}
+	}
+}
 
+func parseF() {
+	if lexemslen > lindex {
+		lx := lexems[lindex]
 		if lx.Tag&(NUMBER|VAR) != 0 {
-			lexemIndex += 1
-			token = append(token, lx.Image)
+			lindex++
+			tokens = append(tokens, lx.Image)
 		} else if lx.Tag&MINUS != 0 {
-			lexemIndex += 1
-			token = append(token, "-1")
-			FParse()
-			token = append(token, "*")
+			lindex++
+			tokens = append(tokens, "-1")
+			parseF()
+			tokens = append(tokens, "*")
 		} else if lx.Tag&LPAREN != 0 {
-			lexemIndex += 1
-			EParse()
-			if lexemLength > lexemIndex {
-				lx = lexem[lexemIndex]
-				lexemIndex += 1
+			lindex++
+			parseE()
+			if lexemslen > lindex {
+				lx := lexems[lindex]
+				lindex++
 				if lx.Tag&RPAREN == 0 {
-					errorStatus = true
+					err = true
 				}
 			} else {
-				errorStatus = true
+				err = true
 			}
 		} else {
-			errorStatus = true
+			err = true
 		}
 	} else {
-		errorStatus = true
+		err = true
 	}
 }
 
-func getVal(term string) int {
-	for _, curVar := range variable {
-		if curVar.title == term {
-			return curVar.value
+func getVal(str string) int {
+	for _, v := range voc {
+		if v.name == str {
+			return v.val
 		}
 	}
 	return 0
 }
 
-func Vocabular(term string) int {
-	for _, curVar := range variable {
-		if curVar.title == term {
+func inVoc(str string) int {
+	for _, v := range voc {
+		if v.name == str {
 			return 1
 		}
 	}
 	return 0
 }
 
-// Конец функций
-
-func Scan1() string {
-	in := bufio.NewScanner(os.Stdin)
-	in.Scan()
-	if err := in.Err(); err != nil {
-		fmt.Fprintln(os.Stderr, "Ошибка ввода:", err)
+func evaller() int {
+	stack := []int{}
+	for _, t := range tokens {
+		if t[0] >= 48 && t[0] <= 57 || (t[0] == '-' && len(t) > 1) {
+			num, _ := strconv.Atoi(t)
+			stack = append(stack, num)
+		} else if (t[0] >= 65 && t[0] <= 90) || (t[0] >= 97 && t[0] <= 122) {
+			num := getVal(t)
+			stack = append(stack, num)
+		} else {
+			switch t {
+			case "+":
+				stack = append(stack[:len(stack)-2], stack[len(stack)-1]+stack[len(stack)-2])
+				break
+			case "-":
+				stack = append(stack[:len(stack)-2], stack[len(stack)-2]-stack[len(stack)-1])
+				break
+			case "*":
+				stack = append(stack[:len(stack)-2], stack[len(stack)-1]*stack[len(stack)-2])
+				break
+			case "/":
+				if stack[len(stack)-2] == 0 {
+					stack = append(stack[:len(stack)-2], 0)
+				} else {
+					stack = append(stack[:len(stack)-2], stack[len(stack)-2]/stack[len(stack)-1])
+				}
+				break
+			}
+		}
 	}
-	return in.Text()
+	return stack[0]
 }
 
 func main() {
-
-	var schemeEval func() int
-	schemeEval = func() int {
-		for _, tmp := range token {
-			if (tmp[0] > 47 && tmp[0] < 58) || (tmp[0] == '-' && len(tmp) > 1) {
-				num, _ := strconv.Atoi(tmp)
-				stack.push(num)
-			} else if (tmp[0] > 64 && tmp[0] < 91) || (tmp[0] > 96 && tmp[0] < 123) {
-				num := getVal(tmp)
-				stack.push(num)
-			} else {
-				switch tmp {
-
-				case "+":
-
-					stack.push(stack.pop() + stack.pop())
-
-				case "-":
-
-					var (
-						second int = stack.pop()
-						first  int = stack.pop()
-					)
-
-					stack.push(first - second)
-
-				case "*":
-
-					stack.push(stack.pop() * stack.pop())
-
-				case "/":
-
-					var (
-						second int = stack.pop()
-						first  int = stack.pop()
-					)
-
-					if first == 0 {
-
-						stack.push(0)
-
-					} else {
-
-						stack.push(first / second)
-					}
-
-				}
-			}
-		}
-		return stack.pop()
-	}
-	var term string
-	//term, _ = bufio.NewReader(os.Stdin).ReadString('\n')
-	//term = term[:len(term)-2]
-	term = Scan1()
-	//fmt.Scanln(&term)
-	//fmt.Println(term)
-	lexer(term)
-	EParse()
-	lexemIndex = len(token) - 1
-	if errorStatus {
+	expr := input.Gets()
+	lexer(expr)
+	parseE()
+	lindex = len(tokens) - 1
+	if err {
 		fmt.Println("error")
 	} else {
 		var x int
-		var v Variable
-		for _, lx := range lexem {
-			if lx.Tag&VAR != 0 && Vocabular(lx.Image) == 0 {
-				fmt.Scanf("%d", &x)
-				v.title = lx.Image
-				v.value = x
-				variable = append(variable, v)
+		var v Var
+		for _, lx := range lexems {
+			if lx.Tag&VAR != 0 && inVoc(lx.Image) == 0 {
+				input.Scanf("%d", &x)
+				v.name = lx.Image
+				v.val = x
+				voc = append(voc, v)
 			}
 		}
-		fmt.Println(schemeEval())
-		//fmt.Println(errorStatus)
+		fmt.Println(evaller())
 	}
 }

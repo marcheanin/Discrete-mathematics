@@ -1,67 +1,65 @@
 package main
 
-import (
-	"fmt"
-	"math"
-)
+import "fmt"
+import "math"
 
-var d []int
-var n, q int
+var nodes []int
 
-func dividers() {
-	a := 1
-	q = 0
-	for a*a <= n {
-		d[q] = a
-		q++
-		if a*a != n {
-			d[q] = n / a
-			q++
+func getNodes(x int) {
+	nodes = append(nodes, x)
+	//y := x
+	sx := int(math.Round(math.Sqrt(float64(x))))
+	for i := 2; i <= sx; i++ {
+		if x%i == 0 {
+			var inNodes bool
+			for _, y := range nodes {
+				if y == x/i {
+					inNodes = true
+					break
+				}
+			}
+			if !inNodes {
+				nodes = append(nodes, x/i)
+				if i*i != x {
+					nodes = append(nodes, i)
+				}
+			}
 		}
-		a++
-		for a*a < n && n%a != 0 {
-			a++
+	}
+	if x != 1 {
+		nodes = append(nodes, 1)
+	}
+	for _, y := range nodes {
+		fmt.Println(y)
+	}
+}
+
+func getEdges() {
+	for _, x := range nodes { // от какого узла исходит
+		y := x // делаем его копию
+		sx := int(math.Round(math.Sqrt(float64(x))))
+		for i := 2; i <= sx; i++ {
+			if y%i == 0 {
+				fmt.Println(x, "--", x/i)
+				for y >= i && y%i == 0 {
+					y /= i
+				}
+			}
+		}
+		if y != 1 && y != x{
+			fmt.Println( x, "--", x/y)
+		}
+		if y == x && x != 1 {
+			fmt.Println(x, "--", 1)
 		}
 	}
 }
 
 func main() {
-	var d0 [1000000]int
-	var t, i int
-	fmt.Scan(&n)
-	n1 := int(math.Sqrt(float64(n))) * 2
-	d = d0[:n1]
-	dividers()
-	for i = 0; i < q; i++ {
-		loc := i - 1
-		for loc >= 0 && d[loc+1] < d[loc] {
-			t := d[loc+1]
-			d[loc+1] = d[loc]
-			d[loc] = t
-			loc--
-		}
-	}
+	var x int
+	fmt.Scan(&x)
 	fmt.Println("graph {")
-	for i = q - 1; i >= 0; i-- {
-		fmt.Println(d[i])
-	}
-
-	for i = q - 1; i >= 0; i-- {
-		for j := i - 1; j >= 0; j-- {
-			if d[i]%d[j] == 0 {
-				for k := i - 1; k > j; k-- {
-					if d[i]%d[k] == 0 && d[k]%d[j] == 0 {
-						t = 1
-						break
-					}
-				}
-				if t != 1 {
-					fmt.Println(d[i], "--", d[j])
-				}
-				t = 0
-			}
-		}
-
-	}
+	getNodes(x)
+	getEdges()
 	fmt.Println("}")
 }

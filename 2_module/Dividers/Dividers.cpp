@@ -1,4 +1,5 @@
-#include <bits/stdc++.h>
+#include <iostream>
+#include <vector>
 
 using namespace std;
 
@@ -28,11 +29,13 @@ int main(){
             }
         }
     }
+    cout << "graph {" << endl;
     for (int i = 0; i < s.size(); i++){
         cout << s[i] << endl;
     }
 
-    for (auto i : ans){
-        cout << i.first << "--" << i.second << endl;
+    for (int i = 0; i < ans.size(); i++){
+        cout << ans[i].first << "--" << ans[i].second << endl;
     }
+    cout << "}";
 }

@@ -1,112 +1,143 @@
 package main
 
-import (
-	"fmt"
-)
+import "fmt"
 
-var g []Point
-var N, M, K, A int
-var f, error, b bool
-
-type Elem struct {
-	next *Elem
-	v    int
+type vertex struct {
+	num       int
+	roletime  int // эталонное время
+	localtime int
+	wasHere   bool
+	startNum  int
+	edges     []int
 }
 
-type Point struct {
-	next *Elem
-	used bool
-	dist []int
+type queue struct {
+	head, tail, count, cap int
+	arr                    []*vertex
 }
 
-func component(x *Elem, k int) {
-	k++
-	for x != nil {
-		if x.v != A && g[A].dist[x.v] == 0 || g[A].dist[x.v] > k || g[x.v].used == f {
-			g[A].dist[x.v] = k
-			g[x.v].used = !f
-			component(g[x.v].next, k)
-		}
-		x = x.next
+func initi(q *queue, n int) {
+	(*q).arr = make([]*vertex, n)
+	(*q).cap = n
+}
+
+func enqueue(q *queue, x *vertex) {
+	(*q).arr[(*q).tail] = x
+	(*q).tail++
+	(*q).count++
+	if (*q).tail == (*q).cap {
+		(*q).tail = 0
 	}
+}
+func dequeue(q *queue) *vertex {
+	(*q).head++
+	(*q).count--
+	if (*q).head == (*q).cap {
+		(*q).head = 0
+		return (*q).arr[(*q).cap-1]
+	}
+	return (*q).arr[(*q).head-1]
+}
+
+func BFS0(vertexList []*vertex, startNum int) { // первый обход будем считать эталонным
+	// а все остальные должны ему соответствовать
+	var q queue
+	initi(&q, len(vertexList))
+	enqueue(&q, vertexList[startNum])
+	for q.count > 0 {
+		v := dequeue(&q)
+		//fmt.Println("now v = ", v.num, "(", v.time, ")")
+		(*v).wasHere = true
+		(*v).startNum = startNum
+		for _, w := range (*v).edges {
+			if (vertexList)[w].startNum != startNum { // если мы его еще не рассматривали
+				(vertexList)[w].startNum = startNum       // обозначаем, что мы рассмотрели этот узел в этом проходе
+				(vertexList)[w].roletime = v.roletime + 1 // записываем эталонное время
+				enqueue(&q, (vertexList)[w])
+			}
+		}
+	}
+}
+
+func BFS(vertexList []*vertex, startNum int) bool {
+	//fmt.Println("new bfs")
+	var q queue
+	initi(&q, len(vertexList))
+	enqueue(&q, vertexList[startNum])
+	for q.count > 0 {
+		v := dequeue(&q)
+		//fmt.Println("now v = ", v.num, "(", v.localtime, ")")
+		if !(*v).wasHere { // если в первом проходе нас тут не было, значит опорные вершины находятся в разных компонентах
+			return false
+		}
+		for _, w := range (*v).edges {
+			if (vertexList)[w].startNum != startNum { // если мы его еще не рассматривали в этом проходе
+				(vertexList)[w].localtime = v.localtime + 1
+				(vertexList)[w].startNum = (vertexList)[startNum].startNum // обозначаем, что мы рассмотрели этот узел в этом проходе
+				if (vertexList)[w].roletime != (vertexList)[w].localtime { // здесь стоит какое-то эталонное время
+					// если оно не совпадает со временем этого вхождения, то помечаем негодность
+					(vertexList)[w].roletime = -1
+				}
+				enqueue(&q, (vertexList)[w])
+			}
+		}
+	}
+	return true
 }
 
 func main() {
-	var (
-		d0         [1000001]Point
-		a0         [2000001]Elem
-		r          [100001]int
-		x, y, i, j int
-	)
-	fmt.Scan(&N)
-	fmt.Scan(&M)
-	g = d0[:N]
-	a := a0[:2*M]
-	j = 0
-	for i = 0; i < M; i++ {
-		fmt.Scan(&x, &y)
-		if g[x].next == nil {
-			a[j].v = y
-			g[x].next = &a[j]
-		} else {
-			a[j].v = y
-			t := g[x].next
-			g[x].next = &a[j]
-			a[j].next = t
-		}
-		j++
-		if g[y].next == nil {
-			a[j].v = x
-			g[y].next = &a[j]
-		} else {
-			a[j].v = x
-			t := g[y].next
-			g[y].next = &a[j]
-			a[j].next = t
-		}
-		j++
+	var n, m, k, a, b int
+	fmt.Scan(&n)
+	vertexList := make([]*vertex, n)
+	//ввод вершин
+	for i := 0; i < n; i++ {
+		var v vertex
+		v.num = i
+		v.edges = make([]int, 0)
+		v.startNum = -1
+		vertexList[i] = &v
 	}
-	fmt.Scan(&K)
-	roots := r[:K]
-	for i = 0; i < K; i++ {
-		fmt.Scan(&x)
-		roots[i] = x
-		var d0 [1000001]int
-		d := d0[:N]
-		g[x].dist = d
-		A = x
-		//fmt.Println(f, g[x].used)
-		if f != g[x].used {
-			fmt.Print("-")
-			error = true
-			break
-		}
-		g[x].used = !f
-		component(g[x].next, 0)
-		f = !f
+	fmt.Scan(&m)
+	//ввод ребер
+	for i := 0; i < m; i++ {
+		fmt.Scan(&a)
+		fmt.Scan(&b)
+		vertexList[a].edges = append(vertexList[a].edges, b)
+		vertexList[b].edges = append(vertexList[b].edges, a)
 	}
 
-	if !error {
-		for i = 0; i < N; i++ {
-			x = g[roots[0]].dist[i]
-			for j = 1; j < K; j++ {
-				y = g[roots[j]].dist[i]
-				//fmt.Println(g[roots[j]].dist[i], g[roots[j-1]].dist[i])
-				if x == 0 || x != y {
-					error = true
-					break
-				}
-				x = y
-			}
-			if !error {
-				fmt.Print(i, " ")
-				b = true
-			}
-			error = false
+	fmt.Scan(&k)
+	fmt.Scan(&a)
+	BFS0(vertexList, a)
+	//for _, x := range vertexList {
+	//	fmt.Println((*x).num, "(",(*x).roletime, ") " )
+	//}
+	bol := true
+	for i := 1; i < k; i++ {
+		fmt.Scan(&a)
+		(*vertexList[a]).startNum = a
+		(*vertexList[a]).localtime = 0
+		(*vertexList[a]).roletime = 0
+		bol = bol && BFS(vertexList, a)
+		if !bol {
+			fmt.Println("-")
+			return
 		}
-		if !b {
-			fmt.Print("-")
+		//for _, x := range vertexList {
+		//	fmt.Print((*x).num, "(",(*x).localtime, ") " )
+		//}
+	}
+	//fmt.Println("result:")
+	//for _, x := range vertexList {
+	//	fmt.Print((*x).num, "(",(*x).roletime, ") " )
+	//}
+	for _, x := range vertexList {
+		if (*x).roletime > 0 {
+			fmt.Print((*x).num, " ")
+			bol = false
 		}
-
+	}
+	if bol {
+		fmt.Println("-")
 	}
 }

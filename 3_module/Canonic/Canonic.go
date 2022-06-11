@@ -1,76 +1,90 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"sort"
+)
 
-var n, m, q_start, time int
-var h1 []int
-var h2 []int
+var count = 0
 
-func DFS(q int, delta [][]int) {
-	if 0 > h1[q] {
-		h1[q], time, h2 = time, time+1, append(h2, q)
-		for i := 0; i < len(delta[q]); i++ {
-			DFS(delta[q][i], delta)
+type graphEdge struct {
+	to int
+	sym string
+}
+type graphVertex struct {
+	name int
+	color int
+	canon int
+	graphEdges []graphEdge
+}
+
+func DFS(diagram *[]graphVertex, v int)  {
+	(*diagram)[v].color = 1
+	(*diagram)[v].canon = count
+	count++
+	for _, e := range (*diagram)[v].graphEdges {
+		if (*diagram)[e.to].color == 0 {
+			DFS(diagram, e.to)
 		}
 	}
 }
-
-func Init_canon_auto(delta [][]int, phi [][]string) (delta1 [][]int, phi1 [][]string) {
-	delta1, phi1 = make([][]int, time), make([][]string, time)
-	for i := 0; i < time; i++ {
-		delta1[i], phi1[i] = make([]int, m), make([]string, m)
-	}
-	for i := 0; i < time; i++ {
-		x, curr1, curr2 := h2[i], -1, "x"
-		for j := 0; j < len(delta[x]); j++ {
-			curr1 = delta[x][j]
-			delta1[i][j] = h1[curr1]
-		}
-		for j := 0; j < len(phi[x]); j++ {
-			curr2 = phi[x][j]
-			phi1[i][j] = curr2
-		}
-	}
-	return
-}
-
-func Visualization(delta1 [][]int, phi1 [][]string) {
-	fmt.Printf("%d\n%d\n0\n", time, m)
-	for i := 0; i < time; i++ {
-		for j := 0; j < m; j++ {
-			fmt.Printf("%d ", delta1[i][j])
-		}
-		fmt.Printf("\n")
-	}
-	for i := 0; i < time; i++ {
-		for j := 0; j < m; j++ {
-			fmt.Printf("%s ", phi1[i][j])
-		}
-		fmt.Printf("\n")
-	}
-}
-
-func main() {
-	fmt.Scanf("%d%d%d", &n, &m, &q_start)
-	h1, h2, time = make([]int, n), make([]int, 0, n), 0
-	delta, phi := make([][]int, n), make([][]string, n)
+// Просто делается обход в глубину, и затем диаграмма сортируется относительно canon
+func main()  {
+	var n, m, start, cr int
+	var sym string
+	var shrek graphVertex
+	var diagram = make([]graphVertex, 0)
+	_, _ = fmt.Scan(&n)
+	_, _ = fmt.Scan(&m)
+	_, _ = fmt.Scan(&start)
 	for i := 0; i < n; i++ {
-		delta[i], h1[i] = make([]int, m), -1
+		shrek.graphEdges = make([]graphEdge, 0)
+		shrek.name = i
+		shrek.color = 0
+		shrek.canon = -1
 		for j := 0; j < m; j++ {
-			fmt.Scanf("%d", &delta[i][j])
+			_, _ = fmt.Scan(&cr)
+			var e graphEdge
+			e.to = cr
+			shrek.graphEdges = append(shrek.graphEdges, e)
+		}
+		diagram = append(diagram, shrek)
+ 	}
+ 	for i := 0; i < n; i++ {
+ 		for j := 0; j < m; j++ {
+ 			_, _ = fmt.Scan(&sym)
+ 			diagram[i].graphEdges[j].sym = sym
+		}
+ 	}
+ 	DFS(&diagram, start)
+ 	// Переименуем вершины
+ 	for v, _ := range diagram {
+ 		if diagram[v].canon == -1 {
+ 			n--
+		}
+ 		for e, _ := range diagram[v].graphEdges {
+ 			diagram[v].graphEdges[e].to = diagram[diagram[v].graphEdges[e].to].canon
+		}
+		diagram[v].name = diagram[v].canon
+	}
+	sort.Slice(diagram, func(i, j int) bool {
+		return diagram[i].canon < diagram[j].canon
+	})
+ 	fmt.Printf("%d\n%d\n0\n", n, m)
+ 	for _, v := range diagram {
+ 		if v.canon != -1 {
+			for i := 0; i < m; i++ {
+				fmt.Printf("%d ", v.graphEdges[i].to)
+			}
+			fmt.Println()
+		}
+ 	}
+	for _, v := range diagram {
+		if v.canon != -1 {
+			for i := 0; i < m; i++ {
+				fmt.Printf("%s ", v.graphEdges[i].sym)
+			}
+			fmt.Println()
 		}
 	}
-	for i := 0; i < n; i++ {
-		phi[i] = make([]string, m)
-		for j := 0; j < m; j++ {
-			fmt.Scanf("%s", &phi[i][j])
-		}
-	}
-
-	DFS(q_start, delta)
-
-	m = len(delta[q_start])
-	new_delta, new_phi := Init_canon_auto(delta, phi)
-
-	Visualization(new_delta, new_phi)
 }

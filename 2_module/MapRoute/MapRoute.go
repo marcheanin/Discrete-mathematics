@@ -2,209 +2,204 @@ package main
 
 import (
 	"fmt"
-	//"github.com/skorobogatov/input"
-	"os"
-	"strings"
 )
 
-var (
-	N int64
-)
-
-type Vertex struct {
-	x     int64
-	y     int64
-	key   int64
-	index int64
+type prioque struct {
+	heap  []*graphVertex
+	count int
 }
 
-// ОЧЕРЕДЬ С ПРОИРИТЕТАМИ
-
-type PriorityQueue struct {
-	qHeap []*Vertex
-	count int64 // количество элементов очереди
-	cap   int64
-}
-
-func queueEmpty(q *PriorityQueue) bool {
-	return (*q).count == 0
-}
-
-func insert(q *PriorityQueue, v *Vertex) { // добавление вершины в очередь
-	var i int64 = (*q).count
-
-	if i == (*q).cap {
-		fmt.Printf("PANIC\n")
-		os.Exit(1)
+func (p *prioque) heapify(i, n int) {
+	var l, j, r int
+	for {
+		l = 2*i + 1
+		r = l + 1
+		j = i
+		if l < n && p.heap[i].dist > p.heap[l].dist {
+			i = l
+		}
+		if r < n && p.heap[i].dist > p.heap[r].dist {
+			i = r
+		}
+		if i == j {
+			break
+		}
+		p.heap[i], p.heap[j] = p.heap[j], p.heap[i]
+		p.heap[i].index = i
+		p.heap[j].index = j
 	}
-
-	(*q).count++ // (*q).count = i + 1
-	(*q).qHeap[i] = v
-
-	for i > 0 && (*q).qHeap[(i-1)/2].key > (*q).qHeap[i].key {
-		(*q).qHeap[(i-1)/2], (*q).qHeap[i] = (*q).qHeap[i], (*q).qHeap[(i-1)/2]
-		(*q).qHeap[i].index = i
+}
+func (p *prioque) insert(v *graphVertex) {
+	i := p.count
+	p.count = i + 1
+	p.heap[i] = v
+	for i > 0 && p.heap[(i-1)/2].dist > p.heap[i].dist {
+		p.heap[(i-1)/2], p.heap[i] = p.heap[i], p.heap[(i-1)/2]
+		p.heap[i].index = i
 		i = (i - 1) / 2
 	}
-
-	(*q).qHeap[i].index = i
+	p.heap[i].index = i
+}
+func (p *prioque) init(n int) {
+	p.heap = make([]*graphVertex, n)
+	p.count = 0
+}
+func (p *prioque) decreaseKey(vi, d int) {
+	i := vi
+	p.heap[vi].dist = d
+	for i > 0 && p.heap[(i-1)/2].dist > d {
+		p.heap[(i-1)/2], p.heap[i] = p.heap[i], p.heap[(i-1)/2]
+		p.heap[i].index = i
+		i = (i - 1) / 2
+	}
+	p.heap[i].index = i
+}
+func (p *prioque) extractMin() *graphVertex {
+	min := p.heap[0]
+	p.count--
+	if p.count > 0 {
+		p.heap[0] = p.heap[p.count]
+		p.heap[0].index = 0
+		p.heapify(0, p.count)
+	}
+	return min
 }
 
-func extractMin(q *PriorityQueue) *Vertex {
-	var heapify func(*PriorityQueue, int64, int64);
-	heapify = func(pq *PriorityQueue, i int64, n int64) {
-		var (
-			l int64
-			j int64
-			r int64
-		)
-		for {
-			l = 2*i + 1
-			r = l + 1
-			j = i
-			if l < n && (*pq).qHeap[i].key > (*pq).qHeap[l].key {
-				i = l
+// В этой задаче вершины задаются двумя координатами (так как массив будет уже двумерным)
+type Name struct {
+	x, y int
+}
+type graphVertex struct {
+	name       Name
+	graphEdges []Name
+	dist       int
+	index      int
+	w          int
+}
+
+func relax(u, v *graphVertex, w int) bool {
+	changed := u.dist+w < v.dist
+	if changed {
+		v.dist = u.dist + w
+	}
+	//fmt.Println("Chill out", changed)
+	return changed
+}
+func Dijkstra(listIncidence *[][]graphVertex, n int) {
+	var q prioque
+	q.init(n * n)
+	//fmt.Println("Зашли в Дийкстру")
+	for i := 0; i < n; i++ {
+		for j := 0; j < n; j++ {
+			if i == 0 && j == 0 {
+				(*listIncidence)[i][j].dist = (*listIncidence)[i][j].w
+			} else {
+				(*listIncidence)[i][j].dist = 1000000000 // аналог бесконечности :)
 			}
-			if r < n && (*pq).qHeap[i].key > (*pq).qHeap[r].key {
-				i = r
-			}
-			if i == j {
-				break
-			}
-			(*pq).qHeap[i], (*pq).qHeap[j] = (*pq).qHeap[j], (*pq).qHeap[i]
-			(*pq).qHeap[i].index = i
-			(*pq).qHeap[j].index = j
+			q.insert(&(*listIncidence)[i][j])
 		}
 	}
-
-	if queueEmpty(q) {
-		fmt.Printf("UNDERFLOW\n")
-		os.Exit(1)
-	}
-
-	var ptr *Vertex = (*q).qHeap[0]
-	(*q).count--
-
-	if !queueEmpty(q) {
-		(*q).qHeap[0] = (*q).qHeap[(*q).count]
-		(*q).qHeap[0].index = 0
-		heapify(q, 0, (*q).count)
-	}
-
-	return ptr
-}
-
-func changeColorToWhite(c *string) {
-	(*c) = "white"
-}
-
-func makeTmpVertex(i int64, j int64, swtp *[][]int64) (tmp Vertex) {
-	tmp.x = i
-	tmp.y = j
-	tmp.key = (*swtp)[i][j]
-
-	return
-}
-
-func findShortestWay(q *PriorityQueue, swtp *[][]int64, lba *[][]int64) {
-	for !queueEmpty(q) {
-		var currMin *Vertex = extractMin(q)
-		var (
-			i int64 = (*currMin).x
-			j int64 = (*currMin).y
-		)
-
-		changeColorToWhite(&colors[i][j]) // посещаем
-
-		if i > 0 && (*swtp)[i-1][j] > (*swtp)[i][j]+(*lba)[i-1][j] {
-			(*swtp)[i-1][j] = (*swtp)[i][j] + (*lba)[i-1][j]
-			if strings.Compare(colors[i-1][j], "black") == 0 {
-				var tmp Vertex = makeTmpVertex(i-1, j, swtp)
-				insert(q, &tmp)
-			}
-		}
-
-		if i < N-1 && (*swtp)[i+1][j] > (*swtp)[i][j]+(*lba)[i+1][j] {
-			(*swtp)[i+1][j] = (*swtp)[i][j] + (*lba)[i+1][j]
-			if strings.Compare(colors[i+1][j], "black") == 0 {
-				var tmp Vertex = makeTmpVertex(i+1, j, swtp)
-				insert(q, &tmp)
-			}
-		}
-
-		if j > 0 && (*swtp)[i][j-1] > (*swtp)[i][j]+(*lba)[i][j-1] {
-			(*swtp)[i][j-1] = (*swtp)[i][j] + (*lba)[i][j-1]
-			if strings.Compare(colors[i][j-1], "black") == 0 {
-				var tmp Vertex = makeTmpVertex(i, j-1, swtp)
-				insert(q, &tmp)
-			}
-		}
-
-		if j < N-1 && (*swtp)[i][j+1] > (*swtp)[i][j]+(*lba)[i][j+1] {
-			(*swtp)[i][j+1] = (*swtp)[i][j] + (*lba)[i][j+1]
-			if strings.Compare(colors[i][j+1], "black") == 0 {
-				var tmp Vertex = makeTmpVertex(i, j+1, swtp)
-				insert(q, &tmp)
+	for q.count > 0 {
+		v := q.extractMin()
+		//fmt.Printf("Достаем вершину %d %d\n", v.name.x, v.name.y)
+		v.index = -1
+		for _, e := range v.graphEdges {
+			//fmt.Printf("Наша вершина смотрит на %d %d\n", e.x, e.y)
+			if (*listIncidence)[e.x][e.y].index != -1 && relax(v, &(*listIncidence)[e.x][e.y], (*listIncidence)[e.x][e.y].w) {
+				q.decreaseKey((*listIncidence)[e.x][e.y].index, (*listIncidence)[e.x][e.y].dist)
 			}
 		}
 	}
 }
-
-var (
-	colors [][]string
-)
-
-func startCreate(lengthsBetweenAdjacent *[][]int64, shortestWayToPoints *[][]int64) {
-	*lengthsBetweenAdjacent = make([][]int64, N)
-	*shortestWayToPoints = make([][]int64, N)
-	colors = make([][]string, N)
-	for i := 0; int64(i) < N; i++ {
-		(*lengthsBetweenAdjacent)[i] = make([]int64, N)
-		(*shortestWayToPoints)[i] = make([]int64, N)
-		colors[i] = make([]string, N)
-		for i1 := 0; int64(i1) < N; i1++ {
-			(*shortestWayToPoints)[i][i1] = 9223372036854775807
-			colors[i][i1] = "black"
-			fmt.Scan(&(*lengthsBetweenAdjacent)[i][i1])
-		}
-	}
-
-	(*shortestWayToPoints)[0][0] = (*lengthsBetweenAdjacent)[0][0]
-}
-
-func initQ(q *PriorityQueue) {
-	(*q).count = 0
-	(*q).cap = N * N
-	(*q).qHeap = make([]*Vertex, N*N)
-}
-
 func main() {
-	fmt.Scan(&N)
+	var n, d int
+	fmt.Scan(&n)
+	if n == 1 {
+		fmt.Scan(&d)
+		fmt.Println(d)
+	} else {
+		listIncidence := make([][]graphVertex, n)
+		for i := 0; i < n; i++ {
+			listIncidence[i] = make([]graphVertex, n)
+		}
+		for i := 0; i < n; i++ {
+			for j := 0; j < n; j++ {
+				var shrek graphVertex
+				shrek.graphEdges = make([]Name, 0)
+				listIncidence[i] = append(listIncidence[i], shrek)
+			}
+		}
+		for i := 0; i < n; i++ {
+			for j := 0; j < n; j++ {
+				var osel Name
+				osel.x = i
+				osel.y = j
+				fmt.Scan(&d)
+				listIncidence[i][j].w = d
+				listIncidence[i][j].name = osel
+				// Если по углам
+				if i == 0 && j == 0 {
+					osel.x = 0
+					osel.y = 1
+					listIncidence[i][j].graphEdges = append(listIncidence[i][j].graphEdges, osel)
+					osel.x = 1
+					osel.y = 0
+					listIncidence[i][j].graphEdges = append(listIncidence[i][j].graphEdges, osel)
+				}
+				if i == 0 && j == (n-1) {
+					osel.x = 1
+					osel.y = n - 1
+					listIncidence[i][j].graphEdges = append(listIncidence[i][j].graphEdges, osel)
+				}
+				if i == n-1 && j == 0 {
+					osel.x = n - 1
+					osel.y = 1
+					listIncidence[i][j].graphEdges = append(listIncidence[i][j].graphEdges, osel)
+				}
+				// по краям
+				if (i == 0 || i == n-1) && j != 0 && j != n-1 {
+					osel.x = i
+					osel.y = j + 1
+					listIncidence[i][j].graphEdges = append(listIncidence[i][j].graphEdges, osel)
+					osel.y = j
+					if i == 0 {
+						osel.x = 1
+					} else {
+						osel.x = n - 2
+					}
+					listIncidence[i][j].graphEdges = append(listIncidence[i][j].graphEdges, osel)
+				}
+				if (j == 0 || j == n-1) && i != 0 && i != n-1 {
+					osel.x = i + 1
+					osel.y = j
+					listIncidence[i][j].graphEdges = append(listIncidence[i][j].graphEdges, osel)
+					osel.x = i
+					if j == 0 {
+						osel.y = 1
+					} else {
+						osel.y = n - 2
+					}
+					listIncidence[i][j].graphEdges = append(listIncidence[i][j].graphEdges, osel)
+				}
+				// общий случай
+				if i != 0 && i != n-1 && j != 0 && j != n-1 {
+					osel.x = i
+					osel.y = j + 1
+					listIncidence[i][j].graphEdges = append(listIncidence[i][j].graphEdges, osel)
+					osel.x = i
+					osel.y = j - 1
+					listIncidence[i][j].graphEdges = append(listIncidence[i][j].graphEdges, osel)
+					osel.x = i + 1
+					osel.y = j
+					listIncidence[i][j].graphEdges = append(listIncidence[i][j].graphEdges, osel)
+					osel.x = i - 1
+					osel.y = j
+					listIncidence[i][j].graphEdges = append(listIncidence[i][j].graphEdges, osel)
+				}
+			}
+		}
+		Dijkstra(&listIncidence, n)
+		fmt.Println(listIncidence[n-1][n-1].dist)
+	}
 
-	var (
-		q PriorityQueue
-	)
-
-	initQ(&q)
-
-	var (
-		lengthsBetweenAdjacent [][]int64
-		shortestWayToPoints    [][]int64
-	)
-
-	startCreate(&lengthsBetweenAdjacent, &shortestWayToPoints);
-
-	var (
-		tmpV Vertex
-	)
-
-	tmpV.key = shortestWayToPoints[0][0]
-	tmpV.x = 0
-	tmpV.y = 0
-
-	insert(&q, &tmpV)
-
-	findShortestWay(&q, &shortestWayToPoints, &lengthsBetweenAdjacent)
-
-	fmt.Println(shortestWayToPoints[N-1][N-1])
 }

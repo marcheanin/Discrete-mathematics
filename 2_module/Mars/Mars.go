@@ -4,150 +4,123 @@ import (
 	"fmt"
 )
 
-var (
-	m []crew
-	n int
-)
+var nodes [][]int
+var variantsOfGroup [][]int
+var g1 []int
+var g2 []int
+var n int
 
-type crew struct {
-	a           []byte
-	i, k, g, g1 int
-	used        bool
-}
+func makeVariants(groupNums []int, a, b, c, manNum int) {
+	// a,b,c - счетчики того, сколько в человек могут входить в любую, только в первую, точлько во вторую группы
+	if manNum == n {
+		variantsOfGroup = append(variantsOfGroup, groupNums)
+		g1 = append(g1, a)
+		g2 = append(g2, b)
+		return
+	}
 
-type team struct {
-	a []byte
-	k int
-}
+	var i int
+	for i = 0; i < n; i++ { // находим такой минимальный i, что manNum и i не совместимы
+		if nodes[manNum][i] == 1 {
+			break
+		}
+	}
+	if i == n { // если совместим со всеми
+		groupNums[manNum] = 0
+		makeVariants(groupNums, a+1, b, c, manNum+1)
+	} else {
+		//создаем 2 последуюущих варианта
+		group1 := make([]int, 0)
+		group2 := make([]int, 0)
+		for _, x := range groupNums {
+			group1, group2 = append(group1, x), append(group2, x)
+		}
+		// они отличаются тем, что в одном из них manNum включен в первую групп, а в другом - во вторую
+		group1[manNum], group2[manNum] = 1, 2
+		f1, f2 := true, true
 
-func comp(t team, i int) bool {
-	for j := 0; j < n; j++ {
-		if t.a[j] == 1 {
-			if m[i].a[j] == '+' {
-				return false
+		for ; i < n && (f1 || f2); i++ {
+			// в этом цикле добавляем в group1 и group2 те, которые можем
+			// до тех пор, пока не встретим тот, который нельзя добавить
+			if nodes[manNum][i] == 1 { // если i и manNum несовместимы
+				if groupNums[i] == 0 { // если iй еще не распределили, то записываем в обе
+					group1[i] = 2
+					group2[i] = 1
+				}
+				if groupNums[i] == 1 { // если в первой группе
+					f1 = false
+				}
+				if groupNums[i] == 2 { // если во второй группе
+					f2 = false
+				}
 			}
 		}
-	}
-	return true
-}
 
-func find(j, k int) int {
-	h := m[j].i
-	for i := k; i < n; i++ {
-		if m[i].a[h] == '+' {
-			return i
+		if f1 {
+			makeVariants(group1, a, b+1, c, manNum+1)
+		}
+		if f2 {
+			makeVariants(group2, a, b, c+1, manNum+1)
 		}
 	}
-	return 0
-}
-
-func next(i, k, l, g, g1 int, f bool) (int, int) {
-	h := find(i, k)
-	if h != 0 && !m[h].used {
-		m[h].used = true
-		if f {
-			g++
-		} else {
-			g1++
-		}
-		//fmt.Println("next", h, m[h].i+1, f)
-		loc := h - 1
-		for loc > i+l {
-			t := m[loc+1]
-			m[loc+1] = m[loc]
-			m[loc] = t
-			loc--
-		}
-		g, g1 = next(i+l+1, i+l+2, 0, g, g1, !f)
-		g, g1 = next(i, h+1, l+1, g, g1, f)
-	}
-	return g, g1
 }
 
 func main() {
 	fmt.Scan(&n)
-	var (
-		s      string
-		t1, t2 team
-		k, f   byte
-	)
-	m = make([]crew, n)
-	t1.a = make([]byte, n)
-	t2.a = make([]byte, n)
-
+	nodes = make([][]int, n)
+	base := make([]int, n) // список кто-где
+	var str string
 	for i := 0; i < n; i++ {
-		m[i].a = make([]byte, n)
+		nodes[i] = make([]int, 0)
 		for j := 0; j < n; j++ {
-			fmt.Scan(&s)
-			m[i].a[j] = s[0]
-			m[i].i = i
-			if m[i].a[j] == '+' {
-				m[i].k++
-			}
-		}
-		fmt.Scanln()
-	}
-
-	for i := 0; i < n; i++ {
-		if comp(t2, i) {
-			k = 2
-		}
-		if comp(t1, i) {
-			k++
-		}
-		if k == 0 {
-			f = 1
-			break
-		}
-		g, g1 := next(i, i+1, 0, 0, 0, true)
-		//fmt.Println(i, m[i].i+1, t1.k, g1+1, t2.k, g)
-		if (k == 3 && g1+1 == g) || k == 1 {
-			t1.a[m[i].i] = 1
-			t1.k++
-			m[i].g = -1
-		} else {
-			if k == 3 {
-				m[i].g = g
-				m[i].g1 = g1
-				i += g + g1
+			fmt.Scan(&str)
+			if str == "+" {
+				nodes[i] = append(nodes[i], 1)
 			} else {
-				t2.a[m[i].i] = 1
-				t2.k++
-				m[i].g = -1
+				nodes[i] = append(nodes[i], 0)
 			}
-		}
-		k = 0
-	}
-
-	for i := 0; i < n; i++ {
-		if m[i].g != -1 {
-			if comp(t2, i) {
-				k = 2
-			}
-			if comp(t1, i) {
-				k++
-			}
-			if k == 0 {
-				f = 1
-				break
-			}
-			//fmt.Println(i, m[i].i+1, t1.k, m[i].g1+1)
-			if (k == 3 && t1.k+m[i].g1+1 <= n/2) || k == 1 {
-				t1.a[m[i].i] = 1
-				t1.k++
-			} else {
-				t2.a[m[i].i] = 1
-				t2.k++
-			}
-			k = 0
 		}
 	}
 
-	if f == 1 {
-		fmt.Println("No solution")
+	makeVariants(base, 0, 0, 0, 0)
+
+	if len(variantsOfGroup) == 0 {
+		// если мы ни разу не дошли до конца, значит не смогли распределить на 2 группы
+		// значит нет решения
+		fmt.Printf("No solution")
 	} else {
-		for i := 0; i < n; i++ {
-			if t1.a[i] == 1 {
+		for i, _ := range variantsOfGroup {
+			g1[i] = n/2 - g2[i]
+		}
+		variants := make([][]int, len(variantsOfGroup))
+		for i := 0; i < n; i++ { // рассматриваем конкретного человека
+			for j, x := range variantsOfGroup { // смотрим его принадлежность в разных вариантах групп
+				if x[i] == 0 && g1[j] > 0 {
+					x[i] = 1
+					g1[j]--
+				}
+				if x[i] == 0 && g1[j] == 0 {
+					x[i] = 2
+				}
+				variants[j] = append(variants[j], x[i])
+			}
+		}
+		ans := variants[0]
+		for _, x := range variantsOfGroup {
+			if len(x) <= len(ans) {
+				for i, _ := range x {
+					if ans[i] > x[i] {
+						copy(ans, x)
+						break
+					} else if ans[i] < x[i] {
+						break
+					}
+				}
+			}
+		}
+
+		for i, x := range ans {
+			if x == 1 {
 				fmt.Print(i+1, " ")
 			}
 		}

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"os"
 	"sort"
 )
 
@@ -28,7 +30,9 @@ type component struct {
 
 func main() {
 	var n, m int
-	fmt.Scan(&n, &m)
+	stdin := bufio.NewReader(os.Stdin)
+	//fmt.Scanf("%d\n%d\n", &n, &m)
+	fmt.Fscan(stdin, &n, &m)
 	g = make([][]int, n, n)
 	for i := range g {
 		g[i] = make([]int, 0, 0)
@@ -36,7 +40,8 @@ func main() {
 	edges := make([]pair, m, m)
 	var x, y int
 	for i := 0; i < m; i++ {
-		fmt.Scan(&x, &y)
+		//fmt.Scanf("%d%d\n", &x, &y)
+		fmt.Fscan(stdin, &x, &y)
 		edges[i] = pair{x, y}
 		g[x] = append(g[x], y)
 		g[y] = append(g[y], x)
@@ -82,11 +87,25 @@ func main() {
 	})
 	ans := s[0]
 	fmt.Println("graph {")
-	for key, _ := range ans.v {
-		fmt.Printf("\t%d [color=red]\n", key)
+	for i := 0; i < n; i++ {
+		fmt.Printf("\t%d", i)
+		_, ok := ans.v[i]
+		if ok {
+			fmt.Print(" [color = red]")
+		}
+		fmt.Print("\n")
 	}
-	for i := range ans.e {
-		fmt.Printf("\t%d--%d [color=red]\n", ans.e[i].first, ans.e[i].second)
+	//	for key, _ := range ans.v {
+	//		fmt.Printf("\t%d [color=red]\n", key)
+	//	}
+	j := 0
+	for i := 0; i < m; i++ {
+		if j < len(ans.e) && edges[i].first == ans.e[j].first && edges[i].second == ans.e[j].second {
+			fmt.Printf("\t%d -- %d [color = red]\n", ans.e[j].first, ans.e[j].second)
+			j++
+		} else {
+			fmt.Printf("\t%d -- %d \n", edges[i].first, edges[i].second)
+		}
 	}
 	fmt.Println("}")
 }

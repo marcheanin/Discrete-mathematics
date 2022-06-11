@@ -1,148 +1,183 @@
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Scanner;
+import java.util.Stack;
 
-class Pair {
-    int key;
-    int value;
+class Graph implements Comparable<Graph> {
+    ArrayList<Graph> INTO, FROM, BUCKET;
+    Graph ancestor, label, sdom, dom, parent;
+    int n, mark;
+    boolean used, operand;
 
-    public Pair(int key,int value) {
-        this.key=key;
-        this.value=value;
+    Graph(int n) {
+        INTO = new ArrayList<Graph>();
+        FROM = new ArrayList<Graph>();
+        BUCKET = new ArrayList<Graph>(10);
+        this.n = n;
+        sdom = label = this;
+        ancestor = null;
+        operand = false;
+    }
+
+    @Override
+    public int compareTo(Graph graph) {
+        return (this.n - graph.n);
     }
 }
-
-class Vertex2 {
-    int index;
-    int key;
-    int dist;
-    ArrayList<Pair> a = new ArrayList<>();
-    Vertex2 parent;
-
-    public Vertex2(int key) {
-        dist = Integer.MAX_VALUE;
-        this.key=key;
-        parent = null;
-    }
-}
-
-class MyPriorityQueue2 {
-    int nel;
-    int size;
-    Vertex2[] arr;
-
-    public MyPriorityQueue2(int n) {
-        size = n;
-        arr = new Vertex2[n];
-        nel = 0;
-    }
-}
-
-public class MapRoute {
-    public static void heapify(Vertex2[] help,int pos,int nel) {
-        int left,right,j;
-        while(true) {
-            left=2*pos+1;
-            right=left+1;
-            j=pos;
-            if ((left<nel) && (help[pos].dist > help[left].dist))
-                pos=left;
-            if ((right<nel) && (help[pos].dist > help[right].dist))
-                pos=right;
-            if (help[pos].dist == help[j].dist)
-                break;
-            Vertex2 buf=help[pos];
-            help[pos]=help[j];
-            help[j]=buf;
-            help[pos].index=pos;
-            help[j].index=j;
+public class Loops {
+    public static void add_INTO_FROM(ArrayList<Graph> graph, int i, int n) {
+        if (i < n - 1) {
+            graph.get(i).FROM.add(graph.get(i + 1));
+            graph.get(i+1).INTO.add(graph.get(i));
         }
     }
 
-    public static void insert(MyPriorityQueue2 queue,Vertex2[] help, int ptr) {
-        int i=queue.nel;
-        queue.nel++;
-        queue.arr[i]=help[ptr];
-        while(i>0 && (queue.arr[(i-1)/2].dist > queue.arr[i].dist)) {
-            Vertex2 buf =queue.arr[(i-1)/2];
-            queue.arr[(i-1)/2]=queue.arr[i];
-            queue.arr[i]=buf;
-            queue.arr[i].index=i;
-            i=(i-1)/2;
+    public static void add_INTO_FROM_for_op(ArrayList<Graph> graph, ArrayList<Integer> mark, ArrayList<Integer> op, int n) {
+        int j = 0;
+        for(Graph gr : graph) {
+            if (gr.operand) {
+                gr.FROM.add(graph.get(mark.indexOf(op.get(j))));
+                graph.get(mark.indexOf(op.get(j))).INTO.add(gr);
+                j++;
+            }
         }
-        queue.arr[i].index=i;
     }
 
-    public static Vertex2 extractmin(MyPriorityQueue2 queue) {
-        Vertex2 ptr=queue.arr[0];
-        queue.nel--;
-        if(queue.nel>0) {
-            queue.arr[0]=queue.arr[queue.nel];
-            queue.arr[0].index=0;
-            heapify(queue.arr,0,queue.nel);
-        }
-        return ptr;
-    }
-
-    public static void increasekey(MyPriorityQueue2 queue,Vertex2 help, int k) {
-        int i=help.index;
-        help.key=k;
-        while(i>0 && (queue.arr[(i-1)/2].dist > k)) {
-            Vertex2 buf =queue.arr[(i-1)/2];
-            queue.arr[(i-1)/2]=queue.arr[i];
-            queue.arr[i]=buf;
-            queue.arr[i].index=i;
-            i=(i-1)/2;
-        }
-        help.index=i;
-    }
-
-    public static boolean Relax(Vertex2 u, Vertex2 v) {
-        boolean changed;
-        if (u.dist == Integer.MAX_VALUE)
-            changed = false;
-        else changed = (u.dist + v.key) < v.dist;
-        if (changed) {
-            v.dist = u.dist + v.key;
-            v.parent = u;
-        }
-        return changed;
-    }
-
-    public static void Dijkstra(Vertex2[][] a, MyPriorityQueue2 queue) {
-        while(queue.nel > 0) {
-            Vertex2 u = extractmin(queue);
-            u.index = -1;
-            for(Pair pair : u.a)
-                if(a[pair.key][pair.value].index != -1 && Relax(u,a[pair.key][pair.value])) {
-                    increasekey(queue,a[pair.key][pair.value],a[pair.key][pair.value].dist);
+    public static void DFS_with_SORT(ArrayList<Graph> graph) {
+        DFS(graph.get(0));
+        for(int i = 0; i < graph.size(); i++) {
+            if (!graph.get(i).used) {
+                graph.remove(i);
+                i--;
+            }
+            else {
+                for(int j = 0; j < graph.get(i).INTO.size(); j++) {
+                    if (!graph.get(i).INTO.get(j).used) {
+                        graph.get(i).INTO.remove(j);
+                        j--;
+                    }
                 }
+            }
         }
+        Collections.sort(graph);
+    }
+
+    public static int N = 0;
+    public static void DFS(Graph graph) {
+        graph.n = N;
+        graph.used = true;
+        N++;
+        for(int i = 0; i < graph.FROM.size(); i++) {
+            if (!graph.FROM.get(i).used) {
+                graph.FROM.get(i).parent = graph;
+                DFS(graph.FROM.get(i));
+            }
+        }
+    }
+
+    public static void Dominators(ArrayList<Graph> graph) {
+        int n = graph.size() - 1;
+        for(int i = n; i > 0; i--) {
+            Graph w = graph.get(i);
+            for (Graph v : w.INTO) {
+                Graph u = FindMin(v);
+                if (u.sdom.n < w.sdom.n)
+                    w.sdom = u.sdom;
+            }
+            //System.out.println(0);
+            w.ancestor = w.parent;
+            w.sdom.BUCKET.add(w);
+            for (Graph v : w.parent.BUCKET) {
+                Graph u = FindMin(v);
+                if (u.sdom == v.sdom)
+                    v.dom = w.parent;
+                else
+                    v.dom = u;
+            }
+            //System.out.println(1);
+            w.parent.BUCKET.clear();
+        }
+        n++;
+        for(int i = 1; i < n; i++) {
+            if (graph.get(i).dom != graph.get(i).sdom)
+                graph.get(i).dom = graph.get(i).dom.dom;
+        }
+        //System.out.println(2);
+        graph.get(0).dom = null;
+    }
+
+    public static Graph FindMin(Graph v) {
+        Graph min;
+        if (v.ancestor == null)
+            min = v;
+        else {
+            Stack<Graph> stack = new Stack<Graph>();
+            Graph u = v;
+            while (u.ancestor.ancestor != null) {
+                stack.push(u);
+                u = u.ancestor;
+            }
+            while (!stack.empty()) {
+                v = stack.pop();
+                if (v.ancestor.label.sdom.n < v.label.sdom.n)
+                    v.label = v.ancestor.label;
+                v.ancestor = u.ancestor;
+            }
+            min = v.label;
+        }
+        return min;
+    }
+
+    public static int FindLoops(ArrayList<Graph> graph) {
+        int loops = 0;
+        for(Graph gr : graph) {
+            for (Graph gr_into : gr.INTO) {
+                while (gr_into != gr && gr_into != null)
+                    gr_into = gr_into.dom;
+                if (gr_into == gr) {
+                    loops++;
+                    break;
+                }
+            }
+        }
+        return loops;
     }
 
     public static void main(String[] args) {
         Scanner in = new Scanner(System.in);
-        int k = in.nextInt(),v;
-        Vertex2[][] a = new Vertex2[k][k];
-        MyPriorityQueue2 queue = new MyPriorityQueue2(k*k);
-        for(int i=0;i<k;i++) {
-            for (int j = 0; j < k; j++) {
-                a[i][j] = new Vertex2(in.nextInt());
+        int n = in.nextInt(), N = 0;
+        ArrayList<Graph> graph = new ArrayList<Graph>();
+        ArrayList<Integer> op = new ArrayList<>();
+        ArrayList<Integer> mark = new ArrayList<>();
+        for(int i = 0; i < n; i++)
+            graph.add(new Graph(i));
+        in.nextLine();
+        for(int i = 0; i < n; i++) {
+            String str[] = in.nextLine().split(" ");
+            mark.add(new Integer(str[0]));
+            switch (str[1].charAt(0)) {
+                case 'A':
+                    add_INTO_FROM(graph, i, n);
+                    break;
+                case 'B':
+                    op.add(new Integer(str[2]));
+                    graph.get(i).operand = true;
+                    add_INTO_FROM(graph, i, n);
+                    break;
+                case 'J':
+                    op.add(new Integer(str[2]));
+                    graph.get(i).operand = true;
+                    break;
             }
+
         }
-        a[0][0].dist=a[0][0].key;
-        for(int i=0;i<k;i++) {
-            for (int j = 0; j < k; j++) {
-                if(i+1<k) {
-                    a[i][j].a.add(new Pair(i+1,j));
-                    a[i+1][j].a.add(new Pair(i,j));
-                }
-                if(j+1<k) {
-                    a[i][j].a.add(new Pair(i,j+1));
-                    a[i][j+1].a.add(new Pair(i,j));
-                }
-                insert(queue,a[i],j);
-            }
-        }
-        Dijkstra(a,queue);
-        System.out.println(a[k-1][k-1].dist);
+
+
+        add_INTO_FROM_for_op(graph, mark, op, n);
+        DFS_with_SORT(graph);
+        Dominators(graph);
+        System.out.println(FindLoops(graph));
+
+
     }
 }
