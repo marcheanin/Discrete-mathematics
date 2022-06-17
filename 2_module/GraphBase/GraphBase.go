@@ -2,124 +2,93 @@ package main
 
 import "fmt"
 
-var (
-	time, count int = 1, 1
-	G           []point
-	n, m        int
-	s           stack
-)
-
-type condensation struct {
-	isbase bool
-	min    int
+type Vertex struct {
+	connections []int
+	used        bool
+	visited     bool
+	comp        int
+	ins         int
+	min_v       int 
 }
 
-type point struct {
-	v, T1, comp, low int
-	next             *Elem
-}
-
-type Elem struct {
-	next *Elem
-	v    int
-}
-
-type stack struct {
-	data     []int
-	cap, top int
-}
-
-func InitStack() {
-	s.data = make([]int, n)
-	s.cap = n
-}
-
-func Push(x int) {
-	s.data[s.top] = x
-	s.top++
-}
-
-func Pop() int {
-	s.top--
-	return s.data[s.top]
-}
-
-func Tarjan() {
-	InitStack()
-	for v := 0; v < n; v++ {
-		if G[v].T1 == 0 {
-			VisitVertex_Tarjan(v)
-		}
+func refresh(graph []Vertex) {
+	for i := 0; i < len(graph); i++ {
+		graph[i].used = false
 	}
 }
 
-func VisitVertex_Tarjan(v int) {
-	G[v].T1, G[v].low = time, time
-	time++
-	Push(v)
-	x := G[v].next
-	for x != nil {
-		if G[x.v].T1 == 0 {
-			VisitVertex_Tarjan(x.v)
+func topsort(graph []Vertex, v int, order *[]int) {
+	graph[v].used = true
+	for i := 0; i < len(graph[v].connections); i++ {
+		to := graph[v].connections[i]
+		if graph[to].used {
+			continue
 		}
-		if G[x.v].comp == 0 && G[v].low > G[x.v].low {
-			G[v].low = G[x.v].low
-		}
-		x = x.next
+		topsort(graph, to, order)
 	}
-	if G[v].T1 == G[v].low {
-		for {
-			u := Pop()
-			G[u].comp = count
-			if u == v {
-				break
+	graph[v].visited = true
+	*order = append(*order, v)
+}
+
+func unite(graph []Vertex, v int, cond []Vertex, comp int) {
+	graph[v].used = true
+	graph[v].comp = comp
+	if v < cond[comp].min_v {
+		cond[comp].min_v = v
+	}
+	for i := 0; i < len(graph[v].connections); i++ {
+		to := graph[v].connections[i]
+		if graph[to].used {
+			if graph[to].comp != comp {
+				cond[comp].connections = append(cond[comp].connections, graph[to].comp)
+				cond[graph[to].comp].ins++
 			}
+			continue
 		}
-		count++
+		unite(graph, to, cond, comp)
 	}
 }
 
 func main() {
-	var x, y int
-	fmt.Scan(&n)
-	fmt.Scan(&m)
-	G = make([]point, n)
-	a := make([]Elem, m)
-	j := 0
+	var graph []Vertex
+	var n, m int
+	fmt.Scan(&n, &m)
+	
+	for i := 0; i < n; i++ {
+		var ver Vertex
+		ver.connections = make([]int, 0)
+		graph = append(graph, ver)
+	}
+	
 	for i := 0; i < m; i++ {
-		fmt.Scan(&x, &y)
-		if G[x].next == nil {
-			a[j].v = y
-			G[x].next = &a[j]
-		} else {
-			a[j].v = y
-			t := G[x].next
-			G[x].next = &a[j]
-			a[j].next = t
-		}
-		j++
+		var a, b int
+		fmt.Scan(&a, &b)
+		graph[a].connections = append(graph[a].connections, b)
 	}
-
-	Tarjan()
-
-	condensation := make([]condensation, count)
-
-	for i := n - 1; i >= 0; i-- {
-		condensation[G[i].comp].min = i
-		x := G[i].next
-		a := G[i].comp
-		for x != nil {
-			b := G[x.v].comp
-			if a != b {
-				condensation[b].isbase = true
-			}
-			x = x.next
+	
+	order := make([]int, 0)
+	for i := 0; i < len(graph); i++ {
+		if !graph[i].used {
+			topsort(graph, i, &order)
 		}
 	}
-
-	for i := 1; i < count; i++ {
-		if !condensation[i].isbase {
-			fmt.Printf("%d ", condensation[i].min)
+	
+	refresh(graph)
+	cond := make([]Vertex, 0) 
+	for i := 0; i < len(order); i++ {
+		v := order[i]
+		if !graph[v].used {
+			var ver Vertex
+			ver.connections = make([]int, 0)
+			ver.min_v = 100000
+			cond = append(cond, ver)
+			unite(graph, v, cond, len(cond)-1)
+		}
+	}
+	
+	for i := 0; i < len(cond); i++ {
+		if cond[i].ins == 0 {
+			fmt.Println(cond[i].min_v)
 		}
 	}
 }

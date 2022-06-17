@@ -4,364 +4,346 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	s "strings"
 )
 
-var (
-	br, n int
-	b, p  byte
-	v     map[string]string
-	f     map[string]*formula
-	forms []formula
-	j     int
-	a     []Elem
-	this  *formula
-	q     Queue
-)
-
-type Queue struct {
-	data                   []*formula
-	cap, count, head, tail int
+type Vertex struct {
+	formula     string
+	lefts       map[string]bool
+	rights      map[string]bool
+	ins         int
+	used        bool
+	visited     bool
+	connections []int
 }
 
-func Enqueue(x *formula) {
-	q.data[q.tail] = x
-	q.tail++
-	if q.tail == q.cap {
-		q.tail = 0
+func is_in_string(c byte, s string) bool {
+	for i := 0; i < len(s); i++ {
+		if c == s[i] {
+			return true
+		}
 	}
-	q.count++
+	return false
 }
 
-func Dequeue() *formula {
-	x := q.data[q.head]
-	q.head++
-	if q.head == q.cap {
-		q.head = 0
-	}
-	q.count--
-	return x
+func is_num(c byte) bool {
+	nums := "0123456789"
+	return is_in_string(c, nums)
 }
 
-type Lexem struct {
-	Tag
-	Image string
+func is_letter(c byte) bool {
+	letters := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	return is_in_string(c, letters)
 }
 
-type Elem struct {
-	next *Elem
-	v    *formula
-}
-
-type formula struct {
-	str  string
-	next *Elem
-	mark byte
-}
-
-type Tag int
-
+// Tokens
 const (
-	ERROR  Tag = 1 << iota // Неправильная лексема
-	NUMBER                 // Целое число
-	VAR                    // Имя переменной
-	PLUS                   // Знак +
-	MINUS                  // Знак -
-	MUL                    // Знак *
-	DIV                    // Знак /
-	LPAREN                 // Левая круглая скобка
-	RPAREN                 // Правая круглая скобка
-	/*COMMA
-	EQUAL*/
+	ERROR  = 1 << iota // Неправильная лексема
+	NUMBER             // Целое число
+	VAR                // Имя переменной
+	PLUS               // Знак +
+	MINUS              // Знак -
+	MUL                // Знак *
+	DIV                // Знак /
+	LPAREN             // Левая круглая скобка
+	RPAREN             // Правая круглая скобка
+	COMMA
+	EQUAL
+	BEGIN
+	END
 )
 
-func lexer(expr string, lexems chan Lexem) {
-	var (
-		x Lexem
-		c byte
-		s string = ""
-		n int    = len(expr)
-	)
-	for i := 0; i < n; i++ {
-		c = expr[i]
-		switch c {
-		case '+':
-			x.Tag = PLUS
-			x.Image = "+"
-		case '-':
-			x.Tag = MINUS
-			x.Image = "-"
-		case '*':
-			x.Tag = MUL
-			x.Image = "*"
-		case '/':
-			x.Tag = DIV
-			x.Image = "/"
-		case ')':
-			x.Tag = RPAREN
-			x.Image = ")"
-		case '(':
-			x.Tag = LPAREN
-			x.Image = "("
-		case ' ':
+func skip_space(formula string, n int) int {
+	if n >= len(formula) {
+		return n
+	}
+	for ; n < len(formula) && formula[n] == ' '; n++ {
+	}
+	if n >= len(formula) {
+		return n
+	}
+	return n
+}
+
+func parse_number(formula string, n int) (int, bool) {
+	correct := true
+	if !is_num(formula[n]) {
+		correct = false
+	}
+	for ; n < len(formula) && is_num(formula[n]); n++ {
+	}
+	return n, correct
+}
+
+func parse_varaible(formula string, n int) (int, string, bool) {
+	varaible := ""
+	//fmt.Println(formula, len(formula), n)
+	if !is_letter(formula[n]) {
+		return n, varaible, false
+	}
+	for ; n < len(formula) && (is_letter(formula[n]) || is_num(formula[n])); n++ {
+		varaible += string(formula[n])
+	}
+	return n, varaible, true
+}
+
+func parse_plus(formula string, n int) (int, bool) {
+	return n + 1, (formula[n] == '+')
+}
+
+func parse_minus(formula string, n int) (int, bool) {
+	return n + 1, (formula[n] == '-')
+}
+
+func parse_mul(formula string, n int) (int, bool) {
+	return n + 1, (formula[n] == '*')
+}
+
+func parse_div(formula string, n int) (int, bool) {
+	return n + 1, (formula[n] == '/')
+}
+
+func parse_lparen(formula string, n int) (int, bool) {
+	return n + 1, (formula[n] == '(')
+}
+
+func parse_rparen(formula string, n int) (int, bool) {
+	return n + 1, (formula[n] == ')')
+}
+
+func parse_comma(formula string, n int) (int, bool) {
+	return n + 1, (formula[n] == ',')
+}
+
+func parse_equal(formula string, n int) (int, bool) {
+	return n + 1, (formula[n] == '=')
+}
+
+func tokenize(formula string) []int {
+	tokens := make([]int, 0)
+	tokens = append(tokens, BEGIN)
+
+	for n := skip_space(formula, 0); n < len(formula); n = skip_space(formula, n) {
+		//fmt.Println(n)
+		if _n, f := parse_number(formula, n); f {
+			n = _n
+			tokens = append(tokens, NUMBER)
+		} else if _n, _, f := parse_varaible(formula, n); f {
+			n = _n
+			tokens = append(tokens, VAR)
+		} else if _n, f := parse_plus(formula, n); f {
+			n = _n
+			tokens = append(tokens, PLUS)
+		} else if _n, f := parse_minus(formula, n); f {
+			n = _n
+			tokens = append(tokens, MINUS)
+		} else if _n, f := parse_mul(formula, n); f {
+			n = _n
+			tokens = append(tokens, MUL)
+		} else if _n, f := parse_div(formula, n); f {
+			n = _n
+			tokens = append(tokens, DIV)
+		} else if _n, f := parse_lparen(formula, n); f {
+			n = _n
+			tokens = append(tokens, LPAREN)
+		} else if _n, f := parse_rparen(formula, n); f {
+			n = _n
+			tokens = append(tokens, RPAREN)
+		} else if _n, f := parse_comma(formula, n); f {
+			n = _n
+			tokens = append(tokens, COMMA)
+		} else if _n, f := parse_equal(formula, n); f {
+			n = _n
+			tokens = append(tokens, EQUAL)
+		} else {
+			tokens = append(tokens, ERROR)
+			n++
+		}
+	}
+	tokens = append(tokens, END)
+	return tokens
+}
+
+func is_correct(formula string) bool {
+	equal_signs := 0
+	comma_balance := 0
+	bracket_balance := 0
+	for i := 0; i < len(formula); i++ {
+		if formula[i] == '=' {
+			equal_signs++
+		}
+		if formula[i] == '(' {
+			bracket_balance++
+		}
+		if formula[i] == ')' {
+			bracket_balance--
+		}
+		if formula[i] == ',' {
+			if equal_signs == 0 {
+				comma_balance++
+			} else {
+				comma_balance--
+			}
+		}
+	}
+	if equal_signs != 1 || comma_balance != 0 || bracket_balance != 0 {
+		return false
+	}
+
+	tokens := tokenize(formula)
+	equal_reached := false
+	//fmt.Println(tokens)
+	for i := 0; i < len(tokens)-1; i++ {
+		l := tokens[i]
+		r := tokens[i+1]
+		OP := MUL | DIV | PLUS | MINUS
+		if l == EQUAL {
+			equal_reached = true
+		}
+		if l == ERROR ||
+			((l&(BEGIN|COMMA|VAR|EQUAL) == 0) && !equal_reached) ||
+			(l == r && l != MINUS && l != LPAREN && l != RPAREN) ||
+			((l&(LPAREN|OP) != 0) && (r&(MUL|DIV|END) != 0)) ||
+			((l&(MUL|DIV) != 0) && (r&(RPAREN|OP) != 0)) ||
+			((l&(EQUAL) != 0) && (r&(END|RPAREN|DIV|MUL) != 0)) ||
+			((l&(BEGIN|LPAREN) != 0) && (r&(EQUAL) != 0)) ||
+			((l&(LPAREN) != 0) && (r&(RPAREN) != 0)) ||
+			((l&(RPAREN) != 0) && (r&(LPAREN|VAR|NUMBER) != 0)) {
+			return false
+		}
+	}
+	return true
+}
+
+func skip(formula string, n int) int {
+	if n >= len(formula) {
+		return n
+	}
+	for ; n < len(formula) && !is_letter(formula[n]) && formula[n] != '='; n++ {
+	}
+	if n >= len(formula) {
+		return n
+	}
+	if formula[n] == '=' {
+		n++
+	}
+	return n
+}
+
+func (v Vertex) parse(formula string) (Vertex, bool) {
+	syntax_correct := is_correct(formula)
+	if !syntax_correct {
+		return v, false
+	}
+	v.formula = formula
+	v.lefts = make(map[string]bool)
+	v.rights = make(map[string]bool)
+	// Finding '='
+	center_pos := 0 // pos of '='
+	for ; center_pos < len(formula) && formula[center_pos] != '='; center_pos++ {
+	}
+	if center_pos == len(formula) {
+		syntax_correct = false
+	}
+	// Lefts
+	n := 0
+	for ; n < center_pos; n = skip(formula, n) {
+		var varaible string
+		n, varaible, _ = parse_varaible(formula, n)
+		if v.lefts[varaible] {
+			return v, false
+		}
+		v.lefts[varaible] = true
+	}
+	// Rights
+	n = skip(formula, n)
+	for ; n < len(formula); n = skip(formula, n) {
+		var varaible string
+		n = skip(formula, n)
+		n, varaible, _ = parse_varaible(formula, n)
+		v.rights[varaible] = true
+	}
+	return v, syntax_correct
+}
+
+func dfs(graph []Vertex, v int, order *[]string, cycles *bool) {
+	graph[v].used = true
+	for i := 0; i < len(graph[v].connections); i++ {
+		to := graph[v].connections[i]
+		if !graph[to].visited && graph[to].used {
+			*cycles = true
+		}
+		if graph[to].used {
 			continue
-		case '\n':
-			continue
-		default:
-			if c > 47 && c < 58 {
-				x.Tag = NUMBER
-			} else {
-				if c > 64 && c < 91 || c > 96 && c < 123 {
-					x.Tag = VAR
-				} else {
-					x.Tag = ERROR
-				}
-			}
-			s = ""
-			for i < n && (c > 47 && c < 58 || c > 64 && c < 91 || c > 96 && c < 123) {
-				s += string(c)
-				i++
-				if i < n {
-					c = expr[i]
-				}
-			}
-			x.Image = s
-			i--
 		}
-		lexems <- x
+		dfs(graph, to, order, cycles)
 	}
-	close(lexems)
-}
-
-func expr1(l chan Lexem) {
-	term1(l)
-	expr(l)
-}
-
-func expr(l chan Lexem) {
-	var (
-		lx Lexem
-		ok bool
-	)
-	if p == 0 {
-		lx, ok = <-l
-	}
-	if (ok || p == 2) && b != 1 {
-		if p == 2 || lx.Tag&(PLUS|MINUS) != 0 {
-			p = 0
-			term1(l)
-		} else {
-			b = 1
-		}
-		expr(l)
-	}
-}
-
-func term1(l chan Lexem) {
-	factor(l)
-	term(l)
-}
-
-func term(l chan Lexem) {
-	var (
-		lx Lexem
-		ok bool
-	)
-	if p == 0 {
-		lx, ok = <-l
-	}
-	if ok && b != 1 {
-		if lx.Tag&(MUL|DIV) != 0 {
-			p = 0
-			factor(l)
-		} else {
-			if lx.Tag&RPAREN != 0 {
-				br--
-				p = 1
-
-			} else {
-				if lx.Tag&(PLUS|MINUS) != 0 {
-					p = 2
-				} else {
-					b = 1
-				}
-			}
-		}
-		term(l)
-	}
-}
-
-func factor(l chan Lexem) {
-	var (
-		lx Lexem
-		ok bool
-	)
-	if p == 0 {
-		lx, ok = <-l
-	}
-	if (ok || p == 1) && b != 1 {
-		if lx.Tag&NUMBER != 0 {
-			p = 0
-			return
-		}
-		if lx.Tag&VAR != 0 {
-			_, ok1 := v[lx.Image]
-			if !ok1 {
-				b = 1
-			} else {
-				if this.next == nil {
-					a[j].v = f[lx.Image]
-					this.next = &a[j]
-				} else {
-					a[j].v = f[lx.Image]
-					t := this.next
-					this.next = &a[j]
-					a[j].next = t
-				}
-				j++
-			}
-			p = 0
-			return
-		}
-		if lx.Tag&MINUS != 0 {
-			p = 0
-			factor(l)
-			return
-		}
-		if lx.Tag&LPAREN != 0 {
-			p = 0
-			br++
-			expr1(l)
-			if p != 1 {
-				lx = <-l
-			}
-			if lx.Tag&RPAREN != 0 || p == 1 {
-				if p != 1 {
-					br--
-				}
-				p = 0
-			}
-			return
-
-		}
-	}
-	b = 1
-}
-
-func dfs() {
-	for i := 0; i < n; i++ {
-		if forms[i].mark == 0 {
-			dfs2(&forms[i])
-		}
-	}
-}
-
-func dfs2(v *formula) {
-	v.mark = 1
-	x := v.next
-	for x != nil {
-		u := x.v
-		if u.mark == 0 {
-			dfs2(u)
-		} else {
-			if u.mark == 1 {
-				b = 2
-				break
-			}
-		}
-		x = x.next
-	}
-	v.mark = 2
-	Enqueue(v)
+	graph[v].visited = true
+	*order = append(*order, graph[v].formula)
 }
 
 func main() {
-	forms = make([]formula, 1000)
-	a = make([]Elem, 5000)
-
-	v = make(map[string]string)
-	f = make(map[string]*formula)
-	rd := bufio.NewReader(os.Stdin)
-
-	for str, err := rd.ReadString('\n'); err == nil; str, err = rd.ReadString('\n') {
-		forms[n].str = str
-		j := s.Index(str, "=")
-		if j < 1 || j > len(str)-2 {
-			b = 1
-			break
+	graph := make([]Vertex, 0)
+	scanner := bufio.NewScanner(os.Stdin)
+	syntax_correct := true
+	for scanner.Scan() {
+		var v Vertex
+		var _syntax_correct bool
+		v, _syntax_correct = v.parse(scanner.Text())
+		if !_syntax_correct {
+			syntax_correct = false
 		}
-		keys := s.Split(str[:j], ",")
-		values := s.Split(str[j+2:len(str)-1], ",")
-
-		n1 := len(keys)
-		n2 := len(values)
-		if n1 != n2 {
-			b = 1
-			break
-		}
-		if keys[n1-1][len(keys[n1-1])-1] == ' ' {
-			keys[n1-1] = keys[n1-1][:len(keys[n1-1])-1]
-		}
-		for k := 0; k < n1; k++ {
-			if keys[k][0] == ' ' {
-				keys[k] = keys[k][1:]
-			}
-			n3 := len(keys[k])
-			for i1 := 0; i1 < n3; i1++ {
-				c := keys[k][i1]
-				if !(c > 47 && c < 58 || c > 64 && c < 91 || c > 96 && c < 123) {
-					b = 1
-					break
-				}
-			}
-			_, ok2 := v[keys[k]]
-			c := keys[k][0]
-			if (c > 64 && c < 91 || c > 96 && c < 123) && !ok2 {
-				v[keys[k]] = values[k]
-				f[keys[k]] = &forms[n]
-			} else {
-				b = 1
-				break
-			}
-		}
-		n++
+		graph = append(graph, v)
 	}
-	q.data = make([]*formula, n)
-	q.cap = n
-	if b != 1 {
-		for k, e := range v {
-			l := make(chan Lexem)
-			go lexer(e, l)
-			this = f[k]
-			expr1(l)
-			if b == 1 || br != 0 {
-				b = 1
-				break
-			}
-		}
-	}
-	dfs()
-	/*if n==4 {
-		t := forms[0]
-		forms[0] = forms[2]
-		forms[2] = t
-		t = forms[3]
-		forms[3] = forms[2]
-		forms[2] = t
-	}*/
-	switch b {
-	case 1:
+
+	// Syntax error
+	if !syntax_correct {
 		fmt.Println("syntax error")
-	case 2:
-		fmt.Println("cycle")
-	case 0:
-		if n == 2 {
-			fmt.Print(forms[1].str, forms[0].str)
-		} else {
-			for i := 0; i < n; i++ {
-				y := Dequeue()
-				fmt.Print(y.str)
+		return
+	}
+
+	// Making connections
+	varaibles_mask := make(map[string]bool)
+	varaibles := make(map[string]int)
+	for i := 0; i < len(graph); i++ {
+		for varaible := range graph[i].lefts {
+			if varaibles_mask[varaible] {
+				fmt.Println("syntax error")
+				return
 			}
+			varaibles_mask[varaible] = true
+			varaibles[varaible] = i
 		}
+	}
+
+	for i := 0; i < len(graph); i++ {
+		graph[i].connections = make([]int, 0)
+		graph[i].ins = 0
+
+		for varaible := range graph[i].rights {
+			if !varaibles_mask[varaible] {
+				//fmt.Println("syntax error")
+				return
+			}
+			graph[i].connections = append(graph[i].connections, varaibles[varaible])
+			graph[varaibles[varaible]].ins++
+		}
+	}
+
+	// Sorting
+	order := make([]string, 0)
+	cycles := false
+	for i := 0; i < len(graph); i++ {
+		if !graph[i].used && graph[i].ins == 0 {
+			dfs(graph, i, &order, &cycles)
+		}
+	}
+
+	if cycles || len(order) == 0 {
+		fmt.Println("cycle")
+		return
+	}
+
+	for i := 0; i < len(order); i++ {
+		fmt.Println(order[i])
 	}
 }

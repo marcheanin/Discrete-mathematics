@@ -1,200 +1,200 @@
 package main
 
-import "fmt"
-
-type cond struct {
-	i, depth int
-	parent   *cond
-}
-type cond1 struct {
-	used      bool
-	ispresent bool
-	new       int
-}
-
-var (
-	N, M, q0  int
-	order, N1 int
-	D, D1     [][]int
-	F, F1     [][]string
-	Q, pi     []cond
-	A         []cond1
+import (
+	"fmt"
 )
 
-func dfs(i int) {
-	A[i].used = true
-	A[i].new = order
-	order++
-	for j := 0; j < M; j++ {
-		if !A[D1[i][j]].used && A[D1[i][j]].ispresent {
-			dfs(D1[i][j])
+var parent []int
+var rank []int
+
+func make_set(v int) {
+	parent[v] = v
+	rank[v] = 0
+}
+
+func find_set(v int) int {
+	if v == parent[v] {
+		return v
+	}
+	parent[v] = find_set(parent[v])
+	return parent[v]
+}
+
+func union_sets(a, b int) {
+	a = find_set(a)
+	b = find_set(b)
+	if a != b {
+		if rank[a] < rank[b] {
+			c := a
+			a = b
+			b = c
+		}
+		parent[b] = a
+		if rank[a] == rank[b] {
+			rank[a]++
 		}
 	}
 }
 
-func Find(x *cond) *cond {
-	if x.parent == x {
-		return x
-	} else {
-		y := Find(x.parent)
-		x.parent = y
-		return y
-	}
+type Pair struct {
+	to     int
+	signal string
 }
 
-func Union(x, y *cond) {
-	if x.depth < y.depth {
-		x.parent = y
-	} else {
-		y.parent = x
-		if x.depth == y.depth && x != y {
-			x.depth++
-		}
+func split1(table [][]Pair) (int, []int) {
+	m := len(table)
+	for i := 0; i < len(table); i++ {
+		parent[i] = i
 	}
-}
-
-func Split1() int {
-	m := N
-	for i := 0; i < N; i++ {
-		Q[i].parent = &Q[i]
-	}
-
-	for i := 0; i < N-1; i++ {
-		for j := i + 1; j < N; j++ {
-			q1 := Find(&Q[i])
-			q2 := Find(&Q[j])
-			if q1 != q2 {
+	for i := 0; i < len(table); i++ {
+		for j := 0; j < len(table); j++ {
+			if find_set(i) != find_set(j) {
 				eq := true
-				for x := 0; x < M; x++ {
-					q1_ := Q[i].i
-					q2_ := Q[j].i
-					if F[q1_][x] != F[q2_][x] {
+				for k := 0; k < len(table[0]); k++ {
+					if table[i][k].signal != table[j][k].signal {
 						eq = false
 						break
 					}
 				}
 				if eq {
-					Union(q1, q2)
+					union_sets(i, j)
 					m--
 				}
 			}
 		}
 	}
-
-	for i := 0; i < N; i++ {
-		q := &Q[i]
-		pi[q.i] = *Find(q)
+	arr := make([]int, len(table))
+	for i := 0; i < len(table); i++ {
+		arr[i] = find_set(i)
 	}
-	return m
+	return m, arr
 }
 
-func Split() int {
-	m1 := N
-	for i := 0; i < N; i++ {
-		Q[i].parent = &Q[i]
+func split(table [][]Pair, arr []int) int {
+	m := len(table)
+	for i := 0; i < len(table); i++ {
+		parent[i] = i
 	}
-
-	for i := 0; i < N-1; i++ {
-		for j := i + 1; j < N; j++ {
-			q1 := &Q[i]
-			q2 := &Q[j]
-			q1_ := Q[i].i
-			q2_ := Q[j].i
-			if pi[q1_] == pi[q2_] && Find(q1) != Find(q2) {
+	for i := 0; i < len(table); i++ {
+		for j := 0; j < len(table); j++ {
+			if arr[i] == arr[j] && find_set(i) != find_set(j) {
 				eq := true
-				for x := 0; x < M; x++ {
-					w1 := D[q1_][x]
-					w2 := D[q2_][x]
-					if pi[w1] != pi[w2] {
+				for k := 0; k < len(table[0]); k++ {
+					w1 := table[i][k].to
+					w2 := table[j][k].to
+					if arr[w1] != arr[w2] {
 						eq = false
 						break
 					}
 				}
 				if eq {
-					Union(q1, q2)
-					m1--
+					union_sets(i, j)
+					m--
 				}
 			}
 		}
 	}
-
-	for i := 0; i < N; i++ {
-		q := &Q[i]
-		pi[q.i] = *Find(q)
+	for i := 0; i < len(table); i++ {
+		arr[i] = find_set(i)
 	}
-	return m1
+	return m
 }
 
-func AufenkampHohn() {
-	m := Split1()
+func minimize(table [][]Pair) ([][]Pair, []int, []int) {
+	m, arr := split1(table)
 	for {
-		m1 := Split()
+		m1 := split(table, arr)
 		if m == m1 {
 			break
 		}
 		m = m1
 	}
 
-	for i := 0; i < N; i++ {
-		q := Q[i].i
-		q1 := pi[q]
-		if !A[q1.i].ispresent {
-			A[q1.i].ispresent = true
-			N1++
-			for x := 0; x < M; x++ {
-				D1[q1.i][x] = pi[D[q][x]].i
-				F1[q1.i][x] = F[q][x]
-			}
-			q0 = pi[q0].i
+	table_new := make([][]Pair, 0)
+	used := make(map[int]bool)
+
+	backmapping := make([]int, len(table))
+	cur := 0
+	for i := 0; i < len(table); i++ {
+		i1 := arr[i]
+		backmapping[i] = cur
+		if !used[i1] {
+			used[i1] = true
+			cur++
 		}
+	}
+
+	cur = 0
+	used = make(map[int]bool)
+	for i := 0; i < len(table); i++ {
+		i1 := arr[i]
+
+		if !used[i1] {
+			used[i1] = true
+			table_new = append(table_new, make([]Pair, len(table[0])))
+			for j := 0; j < len(table[0]); j++ {
+				table_new[cur][j].to = backmapping[arr[table[i][j].to]]
+				table_new[cur][j].signal = table[i][j].signal
+			}
+			cur++
+		}
+	}
+	return table_new, backmapping, arr
+}
+
+func dfs(v int, count *int, table [][]Pair, visited []bool, numeration []int, antinumeration []int) {
+	visited[v] = true
+	numeration[*count] = v
+	antinumeration[v] = *count
+	(*count)++
+	for i := 0; i < len(table[v]); i++ {
+		to := table[v][i].to
+		if visited[to] {
+			continue
+		}
+		dfs(to, count, table, visited, numeration, antinumeration)
 	}
 }
 
 func main() {
-	fmt.Println("digraph {\nrankdir = LR\ndummy [label = \"\", shape = none]")
-
-	fmt.Scan(&N, &M, &q0)
-	D, D1 = make([][]int, N), make([][]int, N)
-	F, F1 = make([][]string, N), make([][]string, N)
-	Q, pi = make([]cond, N), make([]cond, N)
-	A = make([]cond1, N)
-
-	for i := 0; i < N; i++ {
-		A[i].new = -1
+	var n, m, q0 int
+	fmt.Scan(&n, &m, &q0)
+	table := make([][]Pair, n)
+	for i := 0; i < n; i++ {
+		table[i] = make([]Pair, m)
 	}
 
-	for i := 0; i < N; i++ {
-		Q[i].i = i
-		D[i], D1[i] = make([]int, M), make([]int, M)
-		for j := 0; j < M; j++ {
-			fmt.Scan(&D[i][j])
+	// Input
+	for i := 0; i < n; i++ {
+		for j := 0; j < m; j++ {
+			fmt.Scan(&table[i][j].to)
 		}
 	}
-	for i := 0; i < N; i++ {
-		F[i], F1[i] = make([]string, M), make([]string, M)
-		for j := 0; j < M; j++ {
-			fmt.Scan(&F[i][j])
+	for i := 0; i < n; i++ {
+		for j := 0; j < m; j++ {
+			fmt.Scan(&table[i][j].signal)
 		}
 	}
 
-	AufenkampHohn()
+	parent = make([]int, n)
+	rank = make([]int, n)
 
-	dfs(q0)
+	table_new, backmapping, arr := minimize(table)
+	numeration := make([]int, n)
+	antinumeration := make([]int, n)
+	visited := make([]bool, n)
+	count := 0
+	q0 = backmapping[arr[q0]]
+	dfs(q0, &count, table_new, visited, numeration, antinumeration)
+	q0 = 0
 
-	for i := 0; i < N; i++ {
-		if A[i].ispresent && A[i].new != -1 {
-			fmt.Println(A[i].new, "[shape = circle]")
-		}
-	}
-	fmt.Println("dummy ->", 0)
-	for i := 0; i < N; i++ {
-		if A[i].ispresent && A[i].new != -1 {
-			for j := 0; j < M; j++ {
-				if A[D1[i][j]].ispresent {
-					fmt.Print(A[i].new, " -> ", A[D1[i][j]].new, " [label = \"")
-					fmt.Printf("%c(%s)\"]\n", 97+j, F1[i][j])
-				}
-			}
+	// Output
+	fmt.Println("digraph {\n\trankdir = LR")
+	alphabet := "abcdefghijklmnopqrstuvwxyz"
+	// Connections
+	for i := 0; i < count; i++ {
+		for j := 0; j < len(table_new[i]); j++ {
+			fmt.Printf("\t%d -> %d [label = \"%c(%s)\"]\n", i, antinumeration[table_new[numeration[i]][j].to], alphabet[j], table_new[numeration[i]][j].signal)
 		}
 	}
 	fmt.Println("}")

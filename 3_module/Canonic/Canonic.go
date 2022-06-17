@@ -1,90 +1,71 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
-	"sort"
+	"os"
+	"strconv"
 )
 
-var count = 0
+func dfs(v int, count *int, table [][]Pair, visited []bool, num []int, anum []int) {
+	visited[v] = true
+	num[*count] = v
+	anum[v] = *count
+	(*count)++
+	for i := 0; i < len(table[v]); i++ {
+		to := table[v][i].to
+		if visited[to] {
+			continue
+		}
+		dfs(to, count, table, visited, num, anum)
+	}
+}
 
-type graphEdge struct {
+type Pair struct {
 	to int
-	sym string
-}
-type graphVertex struct {
-	name int
-	color int
-	canon int
-	graphEdges []graphEdge
+	s  string
 }
 
-func DFS(diagram *[]graphVertex, v int)  {
-	(*diagram)[v].color = 1
-	(*diagram)[v].canon = count
-	count++
-	for _, e := range (*diagram)[v].graphEdges {
-		if (*diagram)[e.to].color == 0 {
-			DFS(diagram, e.to)
-		}
-	}
-}
-// Просто делается обход в глубину, и затем диаграмма сортируется относительно canon
-func main()  {
-	var n, m, start, cr int
-	var sym string
-	var shrek graphVertex
-	var diagram = make([]graphVertex, 0)
-	_, _ = fmt.Scan(&n)
-	_, _ = fmt.Scan(&m)
-	_, _ = fmt.Scan(&start)
+func main() {
+	var n, m, q0 int
+	stdin := bufio.NewReader(os.Stdin)
+	fmt.Fscan(stdin, &n, &m, &q0)
+	table := make([][]Pair, n)
 	for i := 0; i < n; i++ {
-		shrek.graphEdges = make([]graphEdge, 0)
-		shrek.name = i
-		shrek.color = 0
-		shrek.canon = -1
+		table[i] = make([]Pair, m)
+	}
+
+	for i := 0; i < n; i++ {
 		for j := 0; j < m; j++ {
-			_, _ = fmt.Scan(&cr)
-			var e graphEdge
-			e.to = cr
-			shrek.graphEdges = append(shrek.graphEdges, e)
-		}
-		diagram = append(diagram, shrek)
- 	}
- 	for i := 0; i < n; i++ {
- 		for j := 0; j < m; j++ {
- 			_, _ = fmt.Scan(&sym)
- 			diagram[i].graphEdges[j].sym = sym
-		}
- 	}
- 	DFS(&diagram, start)
- 	// Переименуем вершины
- 	for v, _ := range diagram {
- 		if diagram[v].canon == -1 {
- 			n--
-		}
- 		for e, _ := range diagram[v].graphEdges {
- 			diagram[v].graphEdges[e].to = diagram[diagram[v].graphEdges[e].to].canon
-		}
-		diagram[v].name = diagram[v].canon
-	}
-	sort.Slice(diagram, func(i, j int) bool {
-		return diagram[i].canon < diagram[j].canon
-	})
- 	fmt.Printf("%d\n%d\n0\n", n, m)
- 	for _, v := range diagram {
- 		if v.canon != -1 {
-			for i := 0; i < m; i++ {
-				fmt.Printf("%d ", v.graphEdges[i].to)
-			}
-			fmt.Println()
-		}
- 	}
-	for _, v := range diagram {
-		if v.canon != -1 {
-			for i := 0; i < m; i++ {
-				fmt.Printf("%s ", v.graphEdges[i].sym)
-			}
-			fmt.Println()
+			fmt.Fscan(stdin, &table[i][j].to)
 		}
 	}
+	for i := 0; i < n; i++ {
+		for j := 0; j < m; j++ {
+			fmt.Fscan(stdin, &table[i][j].s)
+		}
+	}
+	num := make([]int, n)
+	anum := make([]int, n)
+	visited := make([]bool, n)
+	count := 0
+	dfs(q0, &count, table, visited, num, anum)
+
+	n = count
+	bufstdout := bufio.NewWriter(os.Stdout)
+	bufstdout.WriteString(strconv.Itoa(n) + "\n")
+	bufstdout.WriteString(strconv.Itoa(m) + "\n" + "0" + "\n")
+	for i := 0; i < n; i++ {
+		for j := 0; j < m; j++ {
+			bufstdout.WriteString(strconv.Itoa(anum[table[num[i]][j].to]) + " ")
+		}
+		bufstdout.WriteString("\n")
+	}
+	for i := 0; i < n; i++ {
+		for j := 0; j < m; j++ {
+			bufstdout.WriteString(table[num[i]][j].s + " ")
+		}
+		bufstdout.WriteString("\n")
+	}
+	bufstdout.Flush()
 }
