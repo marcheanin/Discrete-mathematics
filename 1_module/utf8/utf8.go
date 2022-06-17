@@ -1,11 +1,15 @@
 package main
 
+import (
+	"math"
+)
+
 func encode(a []rune) []byte {
 	var s []byte
-	for i := range a {
-		if a[i] < 2^7 {
+	for i := 0; i < len(a); i++ {
+		if a[i] < rune(math.Pow(2, 7)) {
 			s = append(s, byte(a[i]))
-		} else if a[i] < 2^11 {
+		} else if a[i] < rune(math.Pow(2, 11)) {
 			s = append(s, 0xC0+byte(a[i]/0x40), 0x80+byte(a[i]%0x40))
 		} else if a[i] < 65536 {
 			s = append(s, 0xE0+byte(a[i]/0x1000), 0x80+byte((a[i]/0x40)%0x40), 0x80+byte(a[i]%0x40))
@@ -19,7 +23,7 @@ func encode(a []rune) []byte {
 func decode(a []byte) []rune {
 	var s []rune
 	for i := 0; i < len(a); i++ {
-		if a[i] < 2^7 {
+		if a[i] < byte(math.Pow(2, 7)) {
 			a1 := rune(a[i])
 			s = append(s, a1)
 		} else if a[i] < 224 {
